@@ -5,26 +5,15 @@ import "../ProtocolInterface.sol";
 import "../../interfaces/CTokenInterface.sol";
 import "../../compound/helpers/Exponential.sol";
 import "../../interfaces/ERC20.sol";
-import "../../constants/ConstantAddresses.sol";
-import "../../DS/DSAuth.sol";
 
+contract CompoundSavingsProtocol {
 
-contract CompoundSavingsProtocol is ProtocolInterface, Exponential, ConstantAddresses, DSAuth {
+    address public constant NEW_CDAI_ADDRESS = 0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643;
+    address public constant DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
 
-    CTokenInterface public cDaiContract;
-    address public savingsProxy;
+    CTokenInterface public constant cDaiContract = CTokenInterface(NEW_CDAI_ADDRESS);
 
-    constructor() public {
-        cDaiContract = CTokenInterface(NEW_CDAI_ADDRESS);
-    }
-
-    function addSavingsProxy(address _savingsProxy) public auth {
-
-        savingsProxy = _savingsProxy;
-    }
-
-    function deposit(address _user, uint _amount) public override {
-        require(msg.sender == _user);
+    function compDeposit(address _user, uint _amount) internal {
         // get dai from user
         require(ERC20(DAI_ADDRESS).transferFrom(_user, address(this), _amount));
 
@@ -33,16 +22,12 @@ contract CompoundSavingsProtocol is ProtocolInterface, Exponential, ConstantAddr
 
         // mint cDai
         require(cDaiContract.mint(_amount) == 0, "Failed Mint");
-        // balance should be equal to cDai minted
-        uint cDaiMinted = cDaiContract.balanceOf(address(this));
-        // return cDai to user
-        cDaiContract.transfer(_user, cDaiMinted);
     }
 
-    function withdraw(address _user, uint _amount) public override {
-        require(msg.sender == _user);
+    function compWithdraw(address _user, uint _amount) internal {
         // transfer all users balance to this contract
         require(cDaiContract.transferFrom(_user, address(this), ERC20(NEW_CDAI_ADDRESS).balanceOf(_user)));
+
         // approve cDai to compound contract
         cDaiContract.approve(NEW_CDAI_ADDRESS, uint(-1));
         // get dai from cDai contract

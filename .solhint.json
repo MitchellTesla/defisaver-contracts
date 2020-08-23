@@ -1,6 +1,7 @@
 {
   "extends": ["solhint:recommended"],
   "rules": {
+    "const-name-snakecase": "off",
     "avoid-throw": "off",
     "avoid-suicide": "error",
     "avoid-sha3": "warn",

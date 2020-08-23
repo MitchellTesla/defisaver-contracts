@@ -19,7 +19,7 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
-import { SafeMath } from "./SafeMath.sol";
+import { SafeMath } from "../../../utils/SafeMath.sol";
 import { Math } from "./Math.sol";
 
 

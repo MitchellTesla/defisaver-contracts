@@ -8,7 +8,7 @@ contract ProxyPermission {
 
     /// @notice Called in the context of DSProxy to authorize an address
     /// @param _contractAddr Address which will be authorized
-    function givePermission(address _contractAddr) internal {
+    function givePermission(address _contractAddr) public {
         address currAuthority = address(DSAuth(address(this)).authority());
         DSGuard guard = DSGuard(currAuthority);
 
@@ -22,10 +22,15 @@ contract ProxyPermission {
 
     /// @notice Called in the context of DSProxy to remove authority of an address
     /// @param _contractAddr Auth address which will be removed from authority list
-    function removePermission(address _contractAddr) internal {
+    function removePermission(address _contractAddr) public {
         address currAuthority = address(DSAuth(address(this)).authority());
-        DSGuard guard = DSGuard(currAuthority);
+        
+        // if there is no authority, that means that contract doesn't have permission
+        if (currAuthority == address(0)) {
+            return;
+        }
 
+        DSGuard guard = DSGuard(currAuthority);
         guard.forbid(_contractAddr, address(this), bytes4(keccak256("execute(address,bytes)")));
     }
 }

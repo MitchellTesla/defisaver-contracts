@@ -4,10 +4,12 @@ pragma experimental ABIEncoderV2;
 import "../ProtocolInterface.sol";
 import "../../interfaces/ERC20.sol";
 import "../../interfaces/ITokenInterface.sol";
-import "../../constants/ConstantAddresses.sol";
 import "../../DS/DSAuth.sol";
 
-contract FulcrumSavingsProtocol is ProtocolInterface, ConstantAddresses, DSAuth {
+contract FulcrumSavingsProtocol is ProtocolInterface, DSAuth {
+
+    address public constant NEW_IDAI_ADDRESS = 0x493C57C4763932315A328269E1ADaD09653B9081;
+    address public constant DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
 
     address public savingsProxy;
     uint public decimals = 10 ** 18;

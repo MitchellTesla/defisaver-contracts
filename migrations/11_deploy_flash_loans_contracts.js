@@ -1,6 +1,5 @@
 const MCDSaverFlashLoan = artifacts.require("./MCDSaverFlashLoan.sol");
 const MCDFlashLoanTaker = artifacts.require("./MCDFlashLoanTaker.sol");
-const FlashLoanLogger = artifacts.require("./FlashLoanLogger.sol");
 const MCDCloseFlashLoan = artifacts.require("./MCDCloseFlashLoan.sol");
 const MCDOpenFlashLoan = artifacts.require("./MCDOpenFlashLoan.sol");
 const MCDOpenProxyActions = artifacts.require("./MCDOpenProxyActions.sol");
@@ -15,7 +14,6 @@ module.exports = function(deployer, network, accounts) {
 
         // await deployer.deploy(MCDOpenProxyActions, {gas: 8000000, overwrite: deployAgain});
 
-        // await deployer.deploy(FlashLoanLogger, {gas: 6000000, overwrite: deployAgain});
         await deployer.deploy(MCDSaverFlashLoan, {gas: 6000000, overwrite: deployAgain});
 
         // await deployer.deploy(MCDOpenFlashLoan, {gas: 6500000, overwrite: deployAgain});

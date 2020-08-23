@@ -3,7 +3,6 @@ const MCDMonitorProxyV2 = artifacts.require("./MCDMonitorProxyV2.sol");
 const MCDMonitorV2 = artifacts.require("./MCDMonitorV2.sol");
 const SubscriptionsV2 = artifacts.require("./SubscriptionsV2.sol");
 const SubscriptionsProxyV2 = artifacts.require("./SubscriptionsProxyV2.sol");
-const AutomaticLogger = artifacts.require("./AutomaticLogger.sol");
 
 require('dotenv').config();
 
@@ -13,18 +12,17 @@ module.exports = function(deployer, network, accounts) {
     deployer.then(async () => {
 
         // No need to deploy this ever again, logger is at 0xAD32Ce09DE65971fFA8356d7eF0B783B82Fd1a9A
-        // await deployer.deploy(AutomaticLogger, {gas: 5000000, overwrite: deployAgain});        
 
     	// FIRST STEP
     	// 1. comment second step
     	// 2. deploy first step if needed
     	// ------------------------------------------------------------------------------------------------------
-        
+
         // await deployer.deploy(MCDMonitorProxyV2, 0, {gas: 5000000, overwrite: deployAgain});
 
         // ------------------------------------------------------------------------------------------------------
 
-        
+
         // don't comment this, change to specific address if needed
         let monitorProxyAddress = (await MCDMonitorProxyV2.deployed()).address;
 
@@ -38,7 +36,7 @@ module.exports = function(deployer, network, accounts) {
 
         await deployer.deploy(AutomaticProxyV2, {gas: 6700000, overwrite: deployAgain});
         let automaticProxyAddress = (await AutomaticProxyV2.deployed()).address;
-        
+
         await deployer.deploy(SubscriptionsV2, automaticProxyAddress, {gas: 5000000, overwrite: deployAgain});
         let subscriptionsAddress = (await SubscriptionsV2.deployed()).address;
 
@@ -67,8 +65,8 @@ module.exports = function(deployer, network, accounts) {
         console.log({monitorAddress});
 
         // ------------------------------------------------------------------------------------------------------
-        
-        
+
+
         // always log monitorProxyAddress at the end
         console.log({monitorProxyAddress});
 

@@ -2,12 +2,17 @@ pragma solidity ^0.6.0;
 
 import "../../interfaces/ExchangeInterfaceV2.sol";
 import "../../interfaces/OasisInterface.sol";
-import "../../interfaces/ERC20.sol";
 import "../../interfaces/TokenInterface.sol";
-import "../../constants/ConstantAddresses.sol";
 import "../../DS/DSMath.sol";
+import "../../utils/SafeERC20.sol";
 
-contract OasisTradeWrapper is DSMath, ConstantAddresses, ExchangeInterfaceV2 {
+contract OasisTradeWrapper is DSMath, ExchangeInterfaceV2 {
+
+    using SafeERC20 for ERC20;
+
+    address public constant OTC_ADDRESS = 0x794e6e91555438aFc3ccF1c5076A74F42133d08D;
+    address public constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address public constant KYBER_ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     /// @notice Sells a _srcAmount of tokens at Oasis
     /// @param _srcAddr From token
@@ -18,12 +23,7 @@ contract OasisTradeWrapper is DSMath, ConstantAddresses, ExchangeInterfaceV2 {
         address srcAddr = ethToWethAddr(_srcAddr);
         address destAddr = ethToWethAddr(_destAddr);
 
-        require(ERC20(srcAddr).approve(OTC_ADDRESS, _srcAmount));
-
-        // convert eth -> weth
-        if (srcAddr == WETH_ADDRESS) {
-            TokenInterface(WETH_ADDRESS).deposit{value: _srcAmount}();
-        }
+        ERC20(srcAddr).safeApprove(OTC_ADDRESS, _srcAmount);
 
         uint destAmount = OasisInterface(OTC_ADDRESS).sellAllAmount(srcAddr, _srcAmount, destAddr, 0);
 
@@ -32,7 +32,7 @@ contract OasisTradeWrapper is DSMath, ConstantAddresses, ExchangeInterfaceV2 {
             TokenInterface(WETH_ADDRESS).withdraw(destAmount);
             msg.sender.transfer(destAmount);
         } else {
-            ERC20(destAddr).transfer(msg.sender, destAmount);
+            ERC20(destAddr).safeTransfer(msg.sender, destAmount);
         }
 
         return destAmount;
@@ -47,21 +47,16 @@ contract OasisTradeWrapper is DSMath, ConstantAddresses, ExchangeInterfaceV2 {
         address srcAddr = ethToWethAddr(_srcAddr);
         address destAddr = ethToWethAddr(_destAddr);
 
-        require(ERC20(srcAddr).approve(OTC_ADDRESS, uint(-1)));
+        ERC20(srcAddr).safeApprove(OTC_ADDRESS, uint(-1));
 
-        // convert eth -> weth
-        if (srcAddr == WETH_ADDRESS) {
-            TokenInterface(WETH_ADDRESS).deposit{value: msg.value}();
-        }
-
-        uint srcAmount = OasisInterface(OTC_ADDRESS).buyAllAmount(srcAddr, _destAmount, destAddr, uint(-1));
+        uint srcAmount = OasisInterface(OTC_ADDRESS).buyAllAmount(destAddr, _destAmount, srcAddr, uint(-1));
 
         // convert weth -> eth and send back
         if (destAddr == WETH_ADDRESS) {
             TokenInterface(WETH_ADDRESS).withdraw(_destAmount);
             msg.sender.transfer(_destAmount);
         } else {
-            ERC20(destAddr).transfer(msg.sender, _destAmount);
+            ERC20(destAddr).safeTransfer(msg.sender, _destAmount);
         }
 
         // Send the leftover from the source token back
@@ -75,25 +70,11 @@ contract OasisTradeWrapper is DSMath, ConstantAddresses, ExchangeInterfaceV2 {
     /// @param _destAddr To token
     /// @param _srcAmount From amount
     /// @return uint Rate
-    // function getSellRate(address _srcAddr, address _destAddr, uint _srcAmount) public override view returns (uint) {
-    //     require(_destAddr == KYBER_ETH_ADDRESS, "Kyber eth addr");
-
-    //     address srcAddr = ethToWethAddr(_srcAddr);
-    //     address destAddr = ethToWethAddr(_destAddr);
-
-    //     return wdiv(OasisInterface(OTC_ADDRESS).getBuyAmount(0x6B175474E89094C44Da98b954EedeAC495271d0F, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 10000000), 10000000);
-    // }
-
     function getSellRate(address _srcAddr, address _destAddr, uint _srcAmount) public override view returns (uint) {
-        // require(_srcAddr == 0x6B175474E89094C44Da98b954EedeAC495271d0F, "1");
-        // require(_destAddr == KYBER_ETH_ADDRESS, "1");
-        // require(ethToWethAddr(_destAddr) == WETH_ADDRESS, "1");
+        address srcAddr = ethToWethAddr(_srcAddr);
+        address destAddr = ethToWethAddr(_destAddr);
 
-
-        // address srcAddr = ethToWethAddr(_srcAddr);
-        // address destAddr = ethToWethAddr(_destAddr);
-
-        return 1000;
+        return wdiv(OasisInterface(OTC_ADDRESS).getBuyAmount(destAddr, srcAddr, _srcAmount), _srcAmount);
     }
 
 
@@ -106,7 +87,7 @@ contract OasisTradeWrapper is DSMath, ConstantAddresses, ExchangeInterfaceV2 {
         address srcAddr = ethToWethAddr(_srcAddr);
         address destAddr = ethToWethAddr(_destAddr);
 
-        return wdiv(OasisInterface(OTC_ADDRESS).getPayAmount(destAddr, srcAddr, _destAmount), _destAmount);
+        return wdiv(OasisInterface(OTC_ADDRESS).getPayAmount(srcAddr, destAddr, _destAmount), _destAmount);
     }
 
     /// @notice Send any leftover tokens, we use to clear out srcTokens after buy
@@ -117,7 +98,7 @@ contract OasisTradeWrapper is DSMath, ConstantAddresses, ExchangeInterfaceV2 {
         if (srcAddr == WETH_ADDRESS) {
             msg.sender.transfer(address(this).balance);
         } else {
-            ERC20(srcAddr).transfer(msg.sender, ERC20(srcAddr).balanceOf(address(this)));
+            ERC20(srcAddr).safeTransfer(msg.sender, ERC20(srcAddr).balanceOf(address(this)));
         }
     }
 

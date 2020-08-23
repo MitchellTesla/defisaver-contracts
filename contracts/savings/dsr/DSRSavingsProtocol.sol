@@ -1,8 +1,7 @@
 pragma solidity ^0.6.0;
 
-import "../../mcd/maker/Join.sol";
+import "../../interfaces/Join.sol";
 import "../../DS/DSMath.sol";
-import "../../constants/ConstantAddresses.sol";
 
 abstract contract VatLike {
     function can(address, address) virtual public view returns (uint);
@@ -36,14 +35,11 @@ abstract contract DaiJoinLike {
     function exit(address, uint) virtual public;
 }
 
-contract DSRSavingsProtocol is DSMath, ConstantAddresses {
-
-    // Kovan
-    // address public constant DAI_JOIN_ADDRESS = 0x5AA71a3ae1C0bd6ac27A1f28e1415fFFB6F15B8c;
-    // address public constant POT_ADDRESS = 0xEA190DBDC7adF265260ec4dA6e9675Fd4f5A78bb;
+contract DSRSavingsProtocol is DSMath {
 
     // Mainnet
     address public constant POT_ADDRESS = 0x197E90f9FAD81970bA7976f33CbD77088E5D7cf7;
+    address public constant DAI_JOIN_ADDRESS = 0x9759A6Ac90977b93B58547b4A71c78317f391A28;
 
     function dsrDeposit(uint _amount, bool _fromUser) internal {
         VatLike vat = DaiJoinLike(DAI_JOIN_ADDRESS).vat();

@@ -1,18 +1,12 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
-import "../interfaces/ComptrollerInterface.sol";
-import "../interfaces/CTokenInterface.sol";
-import "./helpers/Exponential.sol";
+import "./CompoundSafetyRatio.sol";
 import "./helpers/CompoundSaverHelper.sol";
 
-/// @title Gets data about Compound positions
-contract CompoundLoanInfo is Exponential, CompoundSaverHelper {
-    // solhint-disable-next-line const-name-snakecase
-    ComptrollerInterface public constant comp = ComptrollerInterface(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B);
 
-    // solhint-disable-next-line const-name-snakecase
-    CompoundOracleInterface public constant oracle = CompoundOracleInterface(0xDDc46a3B076aec7ab3Fc37420A8eDd2959764Ec4);
+/// @title Gets data about Compound positions
+contract CompoundLoanInfo is CompoundSafetyRatio {
 
     struct LoanData {
         address user;
@@ -42,43 +36,15 @@ contract CompoundLoanInfo is Exponential, CompoundSaverHelper {
         uint price;
     }
 
+    address public constant ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address public constant CETH_ADDRESS = 0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5;
+
+
     /// @notice Calcualted the ratio of coll/debt for a compound user
     /// @param _user Address of the user
     function getRatio(address _user) public view returns (uint) {
         // For each asset the account is in
-        address[] memory assets = comp.getAssetsIn(_user);
-
-        uint sumCollateral = 0;
-        uint sumBorrow = 0;
-
-        for (uint i = 0; i < assets.length; i++) {
-            address asset = assets[i];
-
-            (, uint cTokenBalance, uint borrowBalance, uint exchangeRateMantissa)
-                                        = CTokenInterface(asset).getAccountSnapshot(_user);
-
-            Exp memory oraclePrice;
-
-            if (cTokenBalance != 0 || borrowBalance != 0) {
-                oraclePrice = Exp({mantissa: oracle.getUnderlyingPrice(asset)});
-            }
-
-            // Sum up collateral in Eth
-            if (cTokenBalance != 0) {
-                Exp memory exchangeRate = Exp({mantissa: exchangeRateMantissa});
-                (, Exp memory tokensToEther) = mulExp(exchangeRate, oraclePrice);
-                (, sumCollateral) = mulScalarTruncateAddUInt(tokensToEther, cTokenBalance, sumCollateral);
-            }
-
-            // Sum up debt in Eth
-            if (borrowBalance != 0) {
-                (, sumBorrow) = mulScalarTruncateAddUInt(oraclePrice, borrowBalance, sumBorrow);
-            }
-        }
-
-        if (sumBorrow == 0) return 0;
-
-        return (sumCollateral * 10**18) / sumBorrow;
+        return getSafetyRatio(_user);
     }
 
     /// @notice Fetches Compound prices for tokens
@@ -86,9 +52,10 @@ contract CompoundLoanInfo is Exponential, CompoundSaverHelper {
     /// @return prices Array of prices
     function getPrices(address[] memory _cTokens) public view returns (uint[] memory prices) {
         prices = new uint[](_cTokens.length);
+        address oracleAddr = comp.oracle();
 
         for (uint i = 0; i < _cTokens.length; ++i) {
-            prices[i] = oracle.getUnderlyingPrice(_cTokens[i]);
+            prices[i] = CompoundOracleInterface(oracleAddr).getUnderlyingPrice(_cTokens[i]);
         }
     }
 
@@ -103,11 +70,12 @@ contract CompoundLoanInfo is Exponential, CompoundSaverHelper {
         }
     }
 
-    /// @notice Fetches all the collateral/debt address and amounts, denominated in ether
+    /// @notice Fetches all the collateral/debt address and amounts, denominated in usd
     /// @param _user Address of the user
     /// @return data LoanData information
     function getLoanData(address _user) public view returns (LoanData memory data) {
         address[] memory assets = comp.getAssetsIn(_user);
+        address oracleAddr = comp.oracle();
 
         data = LoanData({
             user: _user,
@@ -118,8 +86,6 @@ contract CompoundLoanInfo is Exponential, CompoundSaverHelper {
             borrowAmounts: new uint[](assets.length)
         });
 
-        uint sumCollateral = 0;
-        uint sumBorrow = 0;
         uint collPos = 0;
         uint borrowPos = 0;
 
@@ -132,33 +98,30 @@ contract CompoundLoanInfo is Exponential, CompoundSaverHelper {
             Exp memory oraclePrice;
 
             if (cTokenBalance != 0 || borrowBalance != 0) {
-                oraclePrice = Exp({mantissa: oracle.getUnderlyingPrice(asset)});
+                oraclePrice = Exp({mantissa: CompoundOracleInterface(oracleAddr).getUnderlyingPrice(asset)});
             }
 
-            // Sum up collateral in Eth
+            // Sum up collateral in Usd
             if (cTokenBalance != 0) {
                 Exp memory exchangeRate = Exp({mantissa: exchangeRateMantissa});
-                (, Exp memory tokensToEther) = mulExp(exchangeRate, oraclePrice);
-                (, sumCollateral) = mulScalarTruncateAddUInt(tokensToEther, cTokenBalance, sumCollateral);
+                (, Exp memory tokensToUsd) = mulExp(exchangeRate, oraclePrice);
 
                 data.collAddr[collPos] = asset;
-                (, data.collAmounts[collPos]) = mulScalarTruncate(tokensToEther, cTokenBalance);
+                (, data.collAmounts[collPos]) = mulScalarTruncate(tokensToUsd, cTokenBalance);
                 collPos++;
             }
 
-            // Sum up debt in Eth
+            // Sum up debt in Usd
             if (borrowBalance != 0) {
-                (, sumBorrow) = mulScalarTruncateAddUInt(oraclePrice, borrowBalance, sumBorrow);
-
                 data.borrowAddr[borrowPos] = asset;
                 (, data.borrowAmounts[borrowPos]) = mulScalarTruncate(oraclePrice, borrowBalance);
                 borrowPos++;
             }
         }
 
-        if (sumBorrow == 0) return data;
+        data.ratio = uint128(getSafetyRatio(_user));
 
-        data.ratio = uint128((sumCollateral * 10**18) / sumBorrow);
+        return data;
     }
 
     function getTokenBalances(address _user, address[] memory _cTokens) public view returns (uint[] memory balances, uint[] memory borrows) {
@@ -179,7 +142,7 @@ contract CompoundLoanInfo is Exponential, CompoundSaverHelper {
 
     }
 
-    /// @notice Fetches all the collateral/debt address and amounts, denominated in ether
+    /// @notice Fetches all the collateral/debt address and amounts, denominated in usd
     /// @param _users Addresses of the user
     /// @return loans Array of LoanData information
     function getLoanDataArr(address[] memory _users) public view returns (LoanData[] memory loans) {
@@ -197,7 +160,7 @@ contract CompoundLoanInfo is Exponential, CompoundSaverHelper {
         ratios = new uint[](_users.length);
 
         for (uint i = 0; i < _users.length; ++i) {
-            ratios[i] = getRatio(_users[i]);
+            ratios[i] = getSafetyRatio(_users[i]);
         }
     }
 
@@ -206,6 +169,7 @@ contract CompoundLoanInfo is Exponential, CompoundSaverHelper {
     /// @return tokens Array of cTokens infomartion
     function getTokensInfo(address[] memory _cTokenAddresses) public returns(TokenInfo[] memory tokens) {
         tokens = new TokenInfo[](_cTokenAddresses.length);
+        address oracleAddr = comp.oracle();
 
         for (uint i = 0; i < _cTokenAddresses.length; ++i) {
             (, uint collFactor) = comp.markets(_cTokenAddresses[i]);
@@ -214,7 +178,7 @@ contract CompoundLoanInfo is Exponential, CompoundSaverHelper {
                 cTokenAddress: _cTokenAddresses[i],
                 underlyingTokenAddress: getUnderlyingAddr(_cTokenAddresses[i]),
                 collateralFactor: collFactor,
-                price: oracle.getUnderlyingPrice(_cTokenAddresses[i])
+                price: CompoundOracleInterface(oracleAddr).getUnderlyingPrice(_cTokenAddresses[i])
             });
         }
     }
@@ -224,6 +188,7 @@ contract CompoundLoanInfo is Exponential, CompoundSaverHelper {
     /// @return tokens Array of cTokens infomartion
     function getFullTokensInfo(address[] memory _cTokenAddresses) public returns(TokenInfoFull[] memory tokens) {
         tokens = new TokenInfoFull[](_cTokenAddresses.length);
+        address oracleAddr = comp.oracle();
 
         for (uint i = 0; i < _cTokenAddresses.length; ++i) {
             (, uint collFactor) = comp.markets(_cTokenAddresses[i]);
@@ -238,8 +203,19 @@ contract CompoundLoanInfo is Exponential, CompoundSaverHelper {
                 totalSupply: cToken.totalSupply(),
                 totalBorrow: cToken.totalBorrowsCurrent(),
                 collateralFactor: collFactor,
-                price: oracle.getUnderlyingPrice(_cTokenAddresses[i])
+                price: CompoundOracleInterface(oracleAddr).getUnderlyingPrice(_cTokenAddresses[i])
             });
+        }
+    }
+
+    /// @notice Returns the underlying address of the cToken asset
+    /// @param _cTokenAddress cToken address
+    /// @return Token address of the cToken specified
+    function getUnderlyingAddr(address _cTokenAddress) internal returns (address) {
+        if (_cTokenAddress == CETH_ADDRESS) {
+            return ETH_ADDRESS;
+        } else {
+            return CTokenInterface(_cTokenAddress).underlying();
         }
     }
 }

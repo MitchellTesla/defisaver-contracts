@@ -16,10 +16,10 @@ module.exports = {
   networks: {
     mainnet: {
         provider: function() {
-            return new HDWalletProvider(mnemonic, process.env.INFURA_ENDPOINT);
+            return new HDWalletProvider(mnemonic, process.env.ALCHEMY_NODE);
         },
         network_id: '1',
-        gasPrice: 8100000000, // 8.1 gwei
+        gasPrice: 45100000000, // 8.1 gwei
         skipDryRun: true,
     },
     kovan: {

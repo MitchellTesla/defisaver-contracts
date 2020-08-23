@@ -1,36 +1,39 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
+import "../../utils/GasBurner.sol";
 import "./CompoundMonitorProxy.sol";
 import "./CompoundSubscriptions.sol";
 import "../../interfaces/GasTokenInterface.sol";
 import "../../DS/DSMath.sol";
 import "../../auth/AdminAuth.sol";
-import "../../loggers/AutomaticLogger.sol";
-import "../CompoundLoanInfo.sol";
+import "../../loggers/DefisaverLogger.sol";
+import "../CompoundSafetyRatio.sol";
+import "../../exchange/SaverExchangeCore.sol";
 
 /// @title Contract implements logic of calling boost/repay in the automatic system
-contract CompoundMonitor is AdminAuth, DSMath, CompoundLoanInfo {
+contract CompoundMonitor is AdminAuth, DSMath, CompoundSafetyRatio, GasBurner {
+
+    using SafeERC20 for ERC20;
 
     enum Method { Boost, Repay }
 
-    uint public REPAY_GAS_TOKEN = 30;
-    uint public BOOST_GAS_TOKEN = 19;
+    uint public REPAY_GAS_TOKEN = 25;
+    uint public BOOST_GAS_TOKEN = 20;
 
     uint constant public MAX_GAS_PRICE = 80000000000; // 80 gwei
 
     uint public REPAY_GAS_COST = 2200000;
-    uint public BOOST_GAS_COST = 1500000;
+    uint public BOOST_GAS_COST = 1700000;
 
     address public constant GAS_TOKEN_INTERFACE_ADDRESS = 0x0000000000b3F879cb30FE243b4Dfee438691c04;
-    address public constant AUTOMATIC_LOGGER_ADDRESS = 0xAD32Ce09DE65971fFA8356d7eF0B783B82Fd1a9A;
+    address public constant DEFISAVER_LOGGER = 0x5c55B921f590a89C1Ebe84dF170E655a82b62126;
 
     CompoundMonitorProxy public compoundMonitorProxy;
     CompoundSubscriptions public subscriptionsContract;
-    GasTokenInterface gasToken = GasTokenInterface(GAS_TOKEN_INTERFACE_ADDRESS);
     address public compoundFlashLoanTakerAddress;
 
-    AutomaticLogger public logger = AutomaticLogger(AUTOMATIC_LOGGER_ADDRESS);
+    DefisaverLogger public logger = DefisaverLogger(DEFISAVER_LOGGER);
 
     /// @dev Addresses that are able to call methods for repay and boost
     mapping(address => bool) public approvedCallers;
@@ -53,67 +56,65 @@ contract CompoundMonitor is AdminAuth, DSMath, CompoundLoanInfo {
 
     /// @notice Bots call this method to repay for user when conditions are met
     /// @dev If the contract ownes gas token it will try and use it for gas price reduction
-    /// @param _data Amount and exchange data [amount, minPrice, exchangeType, gasCost, 0xPrice]
-    /// @param _addrData cTokens addreses and exchange [cCollAddress, cBorrowAddress, exchangeAddress]
-    /// @param _callData 0x callData
+    /// @param _exData Exchange data
+    /// @param _cAddresses cTokens addreses and exchange [cCollAddress, cBorrowAddress, exchangeAddress]
     /// @param _user The actual address that owns the Compound position
     function repayFor(
-        uint[5] memory _data, // amount, minPrice, exchangeType, gasCost, 0xPrice
-        address[3] memory _addrData, // cCollAddress, cBorrowAddress, exchangeAddress
-        bytes memory _callData,
+        SaverExchangeCore.ExchangeData memory _exData,
+        address[2] memory _cAddresses, // cCollAddress, cBorrowAddress
         address _user
-    ) public payable onlyApproved {
-        if (gasToken.balanceOf(address(this)) >= BOOST_GAS_TOKEN) {
-            gasToken.free(BOOST_GAS_TOKEN);
-        }
+    ) public payable onlyApproved burnGas(REPAY_GAS_TOKEN) {
 
         (bool isAllowed, uint ratioBefore) = canCall(Method.Repay, _user);
         require(isAllowed); // check if conditions are met
 
-        uint gasCost = calcGasCost(REPAY_GAS_COST);
-        _data[4] = gasCost;
+        uint256 gasCost = calcGasCost(REPAY_GAS_COST);
 
         compoundMonitorProxy.callExecute{value: msg.value}(
             _user,
             compoundFlashLoanTakerAddress,
-            abi.encodeWithSignature("repayWithLoan(uint256[5],address[3],bytes)",
-            _data, _addrData, _callData));
+            abi.encodeWithSignature(
+                "repayWithLoan((address,address,uint256,uint256,uint256,address,address,bytes,uint256),address[2],uint256)",
+                _exData,
+                _cAddresses,
+                gasCost
+            )
+        );
 
         (bool isGoodRatio, uint ratioAfter) = ratioGoodAfter(Method.Repay, _user);
         require(isGoodRatio); // check if the after result of the actions is good
 
         returnEth();
 
-        logger.logRepay(0, msg.sender, _data[0], ratioBefore, ratioAfter);
+        logger.Log(address(this), _user, "AutomaticCompoundRepay", abi.encode(ratioBefore, ratioAfter));
     }
 
     /// @notice Bots call this method to boost for user when conditions are met
     /// @dev If the contract ownes gas token it will try and use it for gas price reduction
-    /// @param _data Amount and exchange data [amount, minPrice, exchangeType, gasCost, 0xPrice]
-    /// @param _addrData cTokens addreses and exchange [cCollAddress, cBorrowAddress, exchangeAddress]
-    /// @param _callData 0x callData
+    /// @param _exData Exchange data
+    /// @param _cAddresses cTokens addreses and exchange [cCollAddress, cBorrowAddress, exchangeAddress]
     /// @param _user The actual address that owns the Compound position
     function boostFor(
-        uint[5] memory _data, // amount, minPrice, exchangeType, gasCost, 0xPrice
-        address[3] memory _addrData, // cCollAddress, cBorrowAddress, exchangeAddress
-        bytes memory _callData,
+        SaverExchangeCore.ExchangeData memory _exData,
+        address[2] memory _cAddresses, // cCollAddress, cBorrowAddress
         address _user
-    ) public payable onlyApproved {
-        if (gasToken.balanceOf(address(this)) >= REPAY_GAS_TOKEN) {
-            gasToken.free(REPAY_GAS_TOKEN);
-        }
+    ) public payable onlyApproved burnGas(BOOST_GAS_TOKEN) {
 
         (bool isAllowed, uint ratioBefore) = canCall(Method.Boost, _user);
         require(isAllowed); // check if conditions are met
 
-        uint gasCost = calcGasCost(BOOST_GAS_COST);
-        _data[4] = gasCost;
+        uint256 gasCost = calcGasCost(BOOST_GAS_COST);
 
         compoundMonitorProxy.callExecute{value: msg.value}(
             _user,
             compoundFlashLoanTakerAddress,
-            abi.encodeWithSignature("boostWithLoan(uint256[5],address[3],bytes)",
-            _data, _addrData, _callData));
+            abi.encodeWithSignature(
+                "boostWithLoan((address,address,uint256,uint256,uint256,address,address,bytes,uint256),address[2],uint256)",
+                _exData,
+                _cAddresses,
+                gasCost
+            )
+        );
 
 
         (bool isGoodRatio, uint ratioAfter) = ratioGoodAfter(Method.Boost, _user);
@@ -121,7 +122,7 @@ contract CompoundMonitor is AdminAuth, DSMath, CompoundLoanInfo {
 
         returnEth();
 
-        logger.logBoost(0, msg.sender, _data[0], ratioBefore, ratioAfter);
+        logger.Log(address(this), _user, "AutomaticCompoundBoost", abi.encode(ratioBefore, ratioAfter));
     }
 
 /******************* INTERNAL METHODS ********************************/
@@ -149,7 +150,7 @@ contract CompoundMonitor is AdminAuth, DSMath, CompoundLoanInfo {
         // check if boost and boost allowed
         if (_method == Method.Boost && !holder.boostEnabled) return (false, 0);
 
-        uint currRatio = getRatio(_user);
+        uint currRatio = getSafetyRatio(_user);
 
         if (_method == Method.Repay) {
             return (currRatio < holder.minRatio, currRatio);
@@ -167,7 +168,7 @@ contract CompoundMonitor is AdminAuth, DSMath, CompoundLoanInfo {
 
         holder= subscriptionsContract.getHolder(_user);
 
-        uint currRatio = getRatio(_user);
+        uint currRatio = getSafetyRatio(_user);
 
         if (_method == Method.Repay) {
             return (currRatio < holder.maxRatio, currRatio);
@@ -203,17 +204,6 @@ contract CompoundMonitor is AdminAuth, DSMath, CompoundLoanInfo {
         REPAY_GAS_COST = _gasCost;
     }
 
-    /// @notice Allows owner to change the amount of gas token burned per function call
-    /// @param _gasAmount Amount of gas token
-    /// @param _isRepay Flag to know for which function we are setting the gas token amount
-    function changeGasTokenAmount(uint _gasAmount, bool _isRepay) public onlyOwner {
-        if (_isRepay) {
-            REPAY_GAS_TOKEN = _gasAmount;
-        } else {
-            BOOST_GAS_TOKEN = _gasAmount;
-        }
-    }
-
     /// @notice Adds a new bot address which will be able to call repay/boost
     /// @param _caller Bot address
     function addCaller(address _caller) public onlyOwner {
@@ -231,7 +221,7 @@ contract CompoundMonitor is AdminAuth, DSMath, CompoundLoanInfo {
     /// @param _to Address of the receiver
     /// @param _amount The amount to be sent
     function transferERC20(address _tokenAddress, address _to, uint _amount) public onlyOwner {
-        ERC20(_tokenAddress).transfer(_to, _amount);
+        ERC20(_tokenAddress).safeTransfer(_to, _amount);
     }
 
     /// @notice If any Eth gets stuck in the contract owner can withdraw it

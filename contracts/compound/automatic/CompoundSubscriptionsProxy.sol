@@ -1,15 +1,13 @@
 pragma solidity ^0.6.0;
 
-import "../../DS/DSGuard.sol";
-import "../../DS/DSAuth.sol";
-import "../../constants/ConstantAddresses.sol";
+import "../../auth/ProxyPermission.sol";
 import "../../interfaces/ICompoundSubscription.sol";
 
 /// @title SubscriptionsProxy handles authorization and interaction with the Subscriptions contract
-contract CompoundSubscriptionsProxy is ConstantAddresses {
+contract CompoundSubscriptionsProxy is ProxyPermission {
 
-    address public constant MONITOR_PROXY_ADDRESS = 0x3Dfa84cF5856e01bc4E12355cAF7a61738509f53;
-    address public constant COMPOUND_SUBSCRIPTION_ADDRESS = 0x131beA5c6679B9dF528De29bA9B8f91Ced3919AF;
+    address public constant COMPOUND_SUBSCRIPTION_ADDRESS = 0x52015EFFD577E08f498a0CCc11905925D58D6207;
+    address public constant COMPOUND_MONITOR_PROXY = 0xB1cF8DE8e791E4Ed1Bd86c03E2fc1f14389Cb10a;
 
     /// @notice Calls subscription contract and creates a DSGuard if non existent
     /// @param _minRatio Minimum ratio below which repay is triggered
@@ -24,17 +22,7 @@ contract CompoundSubscriptionsProxy is ConstantAddresses {
         uint128 _optimalRatioRepay,
         bool _boostEnabled
     ) public {
-
-        address currAuthority = address(DSAuth(address(this)).authority());
-        DSGuard guard = DSGuard(currAuthority);
-
-        if (currAuthority == address(0)) {
-            guard = DSGuardFactory(FACTORY_ADDRESS).newGuard();
-            DSAuth(address(this)).setAuthority(DSAuthority(address(guard)));
-        }
-
-        guard.permit(MONITOR_PROXY_ADDRESS, address(this), bytes4(keccak256("execute(address,bytes)")));
-
+        givePermission(COMPOUND_MONITOR_PROXY);
         ICompoundSubscription(COMPOUND_SUBSCRIPTION_ADDRESS).subscribe(
             _minRatio, _maxRatio, _optimalRatioBoost, _optimalRatioRepay, _boostEnabled);
     }
@@ -58,6 +46,7 @@ contract CompoundSubscriptionsProxy is ConstantAddresses {
 
     /// @notice Calls the subscription contract to unsubscribe the caller
     function unsubscribe() public {
+        removePermission(COMPOUND_MONITOR_PROXY);
         ICompoundSubscription(COMPOUND_SUBSCRIPTION_ADDRESS).unsubscribe();
     }
 }

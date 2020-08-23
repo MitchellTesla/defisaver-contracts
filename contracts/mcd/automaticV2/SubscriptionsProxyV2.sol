@@ -2,7 +2,6 @@ pragma solidity ^0.6.0;
 
 import "../../DS/DSGuard.sol";
 import "../../DS/DSAuth.sol";
-import "../../constants/ConstantAddresses.sol";
 
 contract SubscriptionsInterfaceV2 {
     function subscribe(uint _cdpId, uint128 _minRatio, uint128 _maxRatio, uint128 _optimalBoost, uint128 _optimalRepay, bool _boostEnabled, bool _nextPriceEnabled) external {}
@@ -10,10 +9,11 @@ contract SubscriptionsInterfaceV2 {
 }
 
 /// @title SubscriptionsProxy handles authorization and interaction with the Subscriptions contract
-contract SubscriptionsProxyV2 is ConstantAddresses {
+contract SubscriptionsProxyV2 {
 
     address public constant MONITOR_PROXY_ADDRESS = 0x7456f4218874eAe1aF8B83a64848A1B89fEB7d7C;
     address public constant OLD_SUBSCRIPTION = 0x83152CAA0d344a2Fd428769529e2d490A88f4393;
+    address public constant FACTORY_ADDRESS = 0x5a15566417e6C1c9546523066500bDDBc53F88C7;
 
     function migrate(uint _cdpId, uint128 _minRatio, uint128 _maxRatio, uint128 _optimalRatioBoost, uint128 _optimalRatioRepay, bool _boostEnabled, bool _nextPriceEnabled, address _subscriptions) public {
         SubscriptionsInterfaceV2(OLD_SUBSCRIPTION).unsubscribe(_cdpId);

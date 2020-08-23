@@ -6,7 +6,6 @@ const UniswapWrapper = artifacts.require("./UniswapWrapper.sol");
 const Eth2DaiWrapper = artifacts.require("./Eth2DaiWrapper.sol");
 const Marketplace = artifacts.require("./Marketplace.sol");
 const MarketplaceProxy = artifacts.require("./MarketplaceProxy.sol");
-const SaverLogger = artifacts.require("./SaverLogger.sol");
 const CompoundProxy = artifacts.require("./CompoundProxy.sol");
 const DecenterMonitorLending = artifacts.require("./DecenterMonitorLending.sol");
 const Discount = artifacts.require("./Discount.sol");

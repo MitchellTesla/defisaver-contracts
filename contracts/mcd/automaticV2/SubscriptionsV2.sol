@@ -1,19 +1,22 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
-import "../maker/Manager.sol";
+import "../../interfaces/Manager.sol";
 import "./StaticV2.sol";
-import "../saver_proxy/MCDSaverProxy.sol";
-import "../../constants/ConstantAddresses.sol";
-import "../maker/Vat.sol";
-import "../maker/Spotter.sol";
+import "../saver/MCDSaverProxy.sol";
+import "../../interfaces/Vat.sol";
+import "../../interfaces/Spotter.sol";
 import "../../auth/AdminAuth.sol";
 
 /// @title Handles subscriptions for automatic monitoring
-contract SubscriptionsV2 is AdminAuth, StaticV2, ConstantAddresses {
+contract SubscriptionsV2 is AdminAuth, StaticV2 {
 
     bytes32 internal constant ETH_ILK = 0x4554482d41000000000000000000000000000000000000000000000000000000;
     bytes32 internal constant BAT_ILK = 0x4241542d41000000000000000000000000000000000000000000000000000000;
+
+    address public constant MANAGER_ADDRESS = 0x5ef30b9986345249bc32d8928B7ee64DE9435E39;
+    address public constant VAT_ADDRESS = 0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B;
+    address public constant SPOTTER_ADDRESS = 0x65C79fcB50Ca1594B025960e539eD7A9a6D434A3;
 
     CdpHolder[] public subscribers;
     mapping (uint => SubPosition) public subscribersPos;
@@ -34,7 +37,7 @@ contract SubscriptionsV2 is AdminAuth, StaticV2, ConstantAddresses {
 
     /// @param _saverProxy Address of the MCDSaverProxy contract
     constructor(address _saverProxy) public {
-        saverProxy = MCDSaverProxy(_saverProxy);
+        saverProxy = MCDSaverProxy(payable(_saverProxy));
 
         minLimits[ETH_ILK] = 1700000000000000000;
         minLimits[BAT_ILK] = 1700000000000000000;

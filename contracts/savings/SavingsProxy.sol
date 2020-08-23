@@ -4,24 +4,32 @@ pragma experimental ABIEncoderV2;
 import "./ProtocolInterface.sol";
 import "../interfaces/ERC20.sol";
 import "../interfaces/ITokenInterface.sol";
+import "../interfaces/ComptrollerInterface.sol";
 import "./dydx/ISoloMargin.sol";
 import "./SavingsLogger.sol";
 import "./dsr/DSRSavingsProtocol.sol";
+import "./compound/CompoundSavingsProtocol.sol";
 
 
-contract SavingsProxy is DSRSavingsProtocol {
+contract SavingsProxy is DSRSavingsProtocol, CompoundSavingsProtocol {
     address public constant ADAI_ADDRESS = 0xfC1E690f61EFd961294b3e1Ce3313fBD8aa4f85d;
 
-    address public constant SAVINGS_COMPOUND_ADDRESS = 0x72c5a18D651DA5568EFfE731a98484dE62C9F347;
     address public constant SAVINGS_DYDX_ADDRESS = 0x03b1565e070df392e48e7a8e01798C4B00E534A5;
-    address public constant SAVINGS_FULCRUM_ADDRESS = 0xe9ea575d2d8Ca26b0E026a2146994592e0Ee1Dd9;
     address public constant SAVINGS_AAVE_ADDRESS = 0x535B9035E9bA8D7efe0FeAEac885fb65b303E37C;
+    address public constant NEW_IDAI_ADDRESS = 0x493C57C4763932315A328269E1ADaD09653B9081;
+
+    address public constant COMP_ADDRESS = 0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B;
+
+    address public constant SAVINGS_LOGGER_ADDRESS = 0x89b3635BD2bAD145C6f92E82C9e83f06D5654984;
+    address public constant SOLO_MARGIN_ADDRESS = 0x1E0447b19BB6EcFdAe1e4AE1694b0C3659614e4e;
 
     enum SavingsProtocol {Compound, Dydx, Fulcrum, Dsr, Aave}
 
     function deposit(SavingsProtocol _protocol, uint256 _amount) public {
         if (_protocol == SavingsProtocol.Dsr) {
             dsrDeposit(_amount, true);
+        } else if (_protocol == SavingsProtocol.Compound) {
+            compDeposit(msg.sender, _amount);
         } else {
             _deposit(_protocol, _amount, true);
         }
@@ -32,6 +40,8 @@ contract SavingsProxy is DSRSavingsProtocol {
     function withdraw(SavingsProtocol _protocol, uint256 _amount) public {
         if (_protocol == SavingsProtocol.Dsr) {
             dsrWithdraw(_amount, true);
+        } else if (_protocol == SavingsProtocol.Compound) {
+            compWithdraw(msg.sender, _amount);
         } else {
             _withdraw(_protocol, _amount, true);
         }
@@ -42,6 +52,8 @@ contract SavingsProxy is DSRSavingsProtocol {
     function swap(SavingsProtocol _from, SavingsProtocol _to, uint256 _amount) public {
         if (_from == SavingsProtocol.Dsr) {
             dsrWithdraw(_amount, false);
+        } else if (_from == SavingsProtocol.Compound) {
+            compWithdraw(msg.sender, _amount);
         } else {
             _withdraw(_from, _amount, false);
         }
@@ -52,6 +64,8 @@ contract SavingsProxy is DSRSavingsProtocol {
 
         if (_to == SavingsProtocol.Dsr) {
             dsrDeposit(amountToDeposit, false);
+        } else if (_from == SavingsProtocol.Compound) {
+            compDeposit(msg.sender, _amount);
         } else {
             _deposit(_to, amountToDeposit, false);
         }
@@ -68,17 +82,14 @@ contract SavingsProxy is DSRSavingsProtocol {
         ERC20(DAI_ADDRESS).transfer(msg.sender, ERC20(DAI_ADDRESS).balanceOf(address(this)));
     }
 
+    function claimComp() public {
+        ComptrollerInterface(COMP_ADDRESS).claimComp(address(this));
+    }
+
     function getAddress(SavingsProtocol _protocol) public pure returns (address) {
-        if (_protocol == SavingsProtocol.Compound) {
-            return SAVINGS_COMPOUND_ADDRESS;
-        }
 
         if (_protocol == SavingsProtocol.Dydx) {
             return SAVINGS_DYDX_ADDRESS;
-        }
-
-        if (_protocol == SavingsProtocol.Fulcrum) {
-            return SAVINGS_FULCRUM_ADDRESS;
         }
 
         if (_protocol == SavingsProtocol.Aave) {

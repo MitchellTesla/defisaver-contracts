@@ -1,107 +1,115 @@
 pragma solidity ^0.6.0;
+pragma experimental ABIEncoderV2;
 
-import "../../mcd/saver_proxy/ExchangeHelper.sol";
+import "../../utils/SafeERC20.sol";
+import "../../exchange/SaverExchangeCore.sol";
 import "../../interfaces/CTokenInterface.sol";
-import "../../mcd/Discount.sol";
+import "../../utils/Discount.sol";
 import "../helpers/CompoundSaverHelper.sol";
-import "../../loggers/CompoundLogger.sol";
+import "../../loggers/DefisaverLogger.sol";
 
 /// @title Implements the actual logic of Repay/Boost with FL
-contract CompoundFlashSaverProxy is ExchangeHelper, CompoundSaverHelper  {
+contract CompoundSaverFlashProxy is SaverExchangeCore, CompoundSaverHelper  {
+
+    address public constant DEFISAVER_LOGGER = 0x5c55B921f590a89C1Ebe84dF170E655a82b62126;
+
+    using SafeERC20 for ERC20;
 
     /// @notice Repays the position and sends tokens back for FL
-    /// @param _data Amount and exchange data [amount, minPrice, exchangeType, gasCost, 0xPrice]
-    /// @param _addrData cTokens addreses and exchange [cCollAddress, cBorrowAddress, exchangeAddress]
-    /// @param _callData 0x callData
+    /// @param _exData Exchange data
+    /// @param _cAddresses cTokens addreses and exchange [cCollAddress, cBorrowAddress]
+    /// @param _gasCost Gas cost for transaction
     /// @param _flashLoanData Data about FL [amount, fee]
     function flashRepay(
-        uint[5] memory _data, // amount, minPrice, exchangeType, gasCost, 0xPrice
-        address[3] memory _addrData, // cCollAddress, cBorrowAddress, exchangeAddress
-        bytes memory _callData,
+        ExchangeData memory _exData,
+        address[2] memory _cAddresses, // cCollAddress, cBorrowAddress
+        uint256 _gasCost,
         uint[2] memory _flashLoanData // amount, fee
     ) public payable {
-        enterMarket(_addrData[0], _addrData[1]);
+        enterMarket(_cAddresses[0], _cAddresses[1]);
 
-        address payable user = address(uint160(getUserAddress()));
+        address payable user = payable(getUserAddress());
         uint flashBorrowed = _flashLoanData[0] + _flashLoanData[1];
 
-        uint maxColl = getMaxCollateral(_addrData[0], address(this));
+        uint maxColl = getMaxCollateral(_cAddresses[0], address(this));
 
         // draw max coll
-        require(CTokenInterface(_addrData[0]).redeemUnderlying(maxColl) == 0);
+        require(CTokenInterface(_cAddresses[0]).redeemUnderlying(maxColl) == 0);
 
-        address collToken = getUnderlyingAddr(_addrData[0]);
-        address borrowToken = getUnderlyingAddr(_addrData[1]);
+        address collToken = getUnderlyingAddr(_cAddresses[0]);
+        address borrowToken = getUnderlyingAddr(_cAddresses[1]);
 
-        // swap max coll + loanAmount
-        uint swapAmount = swap(
-            [(maxColl + _flashLoanData[0]), _data[1], _data[2], _data[4]], // collAmount, minPrice, exchangeType, 0xPrice
-            collToken,
-            borrowToken,
-            _addrData[2],
-            _callData
-        );
+        uint swapAmount = 0;
 
-        // get fee
-        swapAmount -= getFee(swapAmount, user, _data[3], _addrData[1]);
+        if (collToken != borrowToken) {
+            // swap max coll + loanAmount
+            (,swapAmount) = _sell(_exData);
+
+            // get fee
+            swapAmount -= getFee(swapAmount, user, _gasCost, _cAddresses[1]);
+        } else {
+            swapAmount = (maxColl + _flashLoanData[0]);
+            swapAmount -= getGasCost(swapAmount, _gasCost, _cAddresses[1]);
+        }
 
         // payback debt
-        paybackDebt(swapAmount, _addrData[1], borrowToken, user);
+        paybackDebt(swapAmount, _cAddresses[1], borrowToken, user);
 
         // draw collateral for loanAmount + loanFee
-        require(CTokenInterface(_addrData[0]).redeemUnderlying(flashBorrowed) == 0);
+        require(CTokenInterface(_cAddresses[0]).redeemUnderlying(flashBorrowed) == 0);
 
         // repay flash loan
         returnFlashLoan(collToken, flashBorrowed);
 
-        CompoundLogger(COMPOUND_LOGGER).LogRepay(user, _data[0], swapAmount, collToken, borrowToken);
+        DefisaverLogger(DEFISAVER_LOGGER).Log(address(this), msg.sender, "CompoundRepay", abi.encode(_exData.srcAmount, swapAmount, collToken, borrowToken));
     }
 
     /// @notice Boosts the position and sends tokens back for FL
-    /// @param _data Amount and exchange data [amount, minPrice, exchangeType, gasCost, 0xPrice]
-    /// @param _addrData cTokens addreses and exchange [cCollAddress, cBorrowAddress, exchangeAddress]
-    /// @param _callData 0x callData
+    /// @param _exData Exchange data
+    /// @param _cAddresses cTokens addreses and exchange [cCollAddress, cBorrowAddress]
+    /// @param _gasCost Gas cost for specific transaction
     /// @param _flashLoanData Data about FL [amount, fee]
     function flashBoost(
-        uint[5] memory _data, // amount, minPrice, exchangeType, gasCost, 0xPrice
-        address[3] memory _addrData, // cCollAddress, cBorrowAddress, exchangeAddress
-        bytes memory _callData,
+        ExchangeData memory _exData,
+        address[2] memory _cAddresses, // cCollAddress, cBorrowAddress
+        uint256 _gasCost,
         uint[2] memory _flashLoanData // amount, fee
     ) public payable {
-        enterMarket(_addrData[0], _addrData[1]);
+        enterMarket(_cAddresses[0], _cAddresses[1]);
 
-        address payable user = address(uint160(getUserAddress()));
+        address payable user = payable(getUserAddress());
         uint flashBorrowed = _flashLoanData[0] + _flashLoanData[1];
 
         // borrow max amount
-        uint borrowAmount = getMaxBorrow(_addrData[1], address(this));
-        require(CTokenInterface(_addrData[1]).borrow(borrowAmount) == 0);
+        uint borrowAmount = getMaxBorrow(_cAddresses[1], address(this));
+        require(CTokenInterface(_cAddresses[1]).borrow(borrowAmount) == 0);
 
-        address collToken = getUnderlyingAddr(_addrData[0]);
-        address borrowToken = getUnderlyingAddr(_addrData[1]);
+        address collToken = getUnderlyingAddr(_cAddresses[0]);
+        address borrowToken = getUnderlyingAddr(_cAddresses[1]);
 
-        // get dfs fee
-        borrowAmount -= getFee((borrowAmount + _flashLoanData[0]), user, _data[3], _addrData[1]);
+        uint swapAmount = 0;
 
-        // swap borrowed amount and fl loan amount
-        uint swapAmount = swap(
-            [(borrowAmount + _flashLoanData[0]), _data[1], _data[2], _data[4]], // collAmount, minPrice, exchangeType, 0xPrice
-            borrowToken,
-            collToken,
-            _addrData[2],
-            _callData
-        );
+        if (collToken != borrowToken) {
+            // get dfs fee
+            borrowAmount -= getFee((borrowAmount + _flashLoanData[0]), user, _gasCost, _cAddresses[1]);
+            _exData.srcAmount = borrowAmount;
+
+            (,swapAmount) = _sell(_exData);
+        } else {
+            swapAmount = (borrowAmount + _flashLoanData[0]);
+            swapAmount -= getGasCost(swapAmount, _gasCost, _cAddresses[1]);
+        }
 
         // deposit swaped collateral
-        depositCollateral(collToken, _addrData[0], swapAmount);
+        depositCollateral(collToken, _cAddresses[0], swapAmount);
 
         // borrow token to repay flash loan
-        require(CTokenInterface(_addrData[1]).borrow(flashBorrowed) == 0);
+        require(CTokenInterface(_cAddresses[1]).borrow(flashBorrowed) == 0);
 
         // repay flash loan
         returnFlashLoan(borrowToken, flashBorrowed);
 
-        CompoundLogger(COMPOUND_LOGGER).LogBoost(user, _data[0], swapAmount, collToken, borrowToken);
+        DefisaverLogger(DEFISAVER_LOGGER).Log(address(this), msg.sender, "CompoundBoost", abi.encode(_exData.srcAmount, swapAmount, collToken, borrowToken));
     }
 
     /// @notice Helper method to deposit tokens in Compound
@@ -123,7 +131,7 @@ contract CompoundFlashSaverProxy is ExchangeHelper, CompoundSaverHelper  {
     /// @param _amount Amount to return
     function returnFlashLoan(address _tokenAddr, uint _amount) internal {
         if (_tokenAddr != ETH_ADDRESS) {
-            ERC20(_tokenAddr).transfer(msg.sender, _amount);
+            ERC20(_tokenAddr).safeTransfer(msg.sender, _amount);
         }
 
         msg.sender.transfer(address(this).balance);

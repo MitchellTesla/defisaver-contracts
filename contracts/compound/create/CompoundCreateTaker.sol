@@ -1,47 +1,93 @@
 pragma solidity ^0.6.0;
+pragma experimental ABIEncoderV2;
 
-import "../../flashloan/aave/ILendingPool.sol";
-import "../../flashloan/FlashLoanLogger.sol";
-import "../helpers/CompoundSaverHelper.sol";
-import "../CompoundBasicProxy.sol";
+import "../../interfaces/ILendingPool.sol";
+import "../../loggers/DefisaverLogger.sol";
 import "../../auth/ProxyPermission.sol";
+import "../../exchange/SaverExchangeCore.sol";
+import "../../utils/SafeERC20.sol";
 
 /// @title Opens compound positions with a leverage
-contract CompoundCreateTaker is CompoundSaverHelper, CompoundBasicProxy, ProxyPermission {
+contract CompoundCreateTaker is ProxyPermission {
+    using SafeERC20 for ERC20;
 
+    address public constant ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     ILendingPool public constant lendingPool = ILendingPool(0x398eC7346DcD622eDc5ae82352F02bE94C62d119);
 
-    address payable public constant COMPOUND_CREATE_FLASH_LOAN = 0x0D5Ec207D7B29525Cc25963347903958C98a66d3;
-
     // solhint-disable-next-line const-name-snakecase
-    FlashLoanLogger public constant logger = FlashLoanLogger(
-        0xb9303686B0EE92F92f63973EF85f3105329D345c
-    );
+    DefisaverLogger public constant logger = DefisaverLogger(0x5c55B921f590a89C1Ebe84dF170E655a82b62126);
 
+    struct CreateInfo {
+        address cCollAddress;
+        address cBorrowAddress;
+        uint depositAmount;
+    }
+
+    /// @notice Main function which will take a FL and open a leverage position
+    /// @dev Call through DSProxy, if _exchangeData.destAddr is a token approve DSProxy
+    /// @param _createInfo [cCollAddress, cBorrowAddress, depositAmount]
+    /// @param _exchangeData Exchange data struct
     function openLeveragedLoan(
-        uint[6] calldata _data, // amountColl, amountDebt, minPrice, exchangeType, gasCost, 0xPrice
-        address[3] calldata _addrData, // cCollAddress, cBorrowAddress, exchangeAddress
-        bytes calldata _callData
-    ) external payable {
-        address tokenAddr = getUnderlyingAddr(_addrData[0]);
+        CreateInfo memory _createInfo,
+        SaverExchangeCore.ExchangeData memory _exchangeData,
+        address payable _compReceiver
+    ) public payable {
+        uint loanAmount = _exchangeData.srcAmount;
 
-        deposit(tokenAddr, _addrData[0], _data[0], true);
-
-        uint maxDebt = getMaxBorrow(_addrData[1], address(this));
-
-        if (_data[1] <= maxDebt) {
-            // convert that debt and deposit back
+        // Pull tokens from user
+        if (_exchangeData.destAddr != ETH_ADDRESS) {
+            ERC20(_exchangeData.destAddr).safeTransferFrom(msg.sender, address(this), _createInfo.depositAmount);
         } else {
-            uint loanAmount = (_data[1] - maxDebt);
-            bytes memory paramsData = abi.encode(_data, _addrData, _callData, true, address(this));
-
-            givePermission(COMPOUND_CREATE_FLASH_LOAN);
-
-            lendingPool.flashLoan(COMPOUND_CREATE_FLASH_LOAN, getUnderlyingAddr(_addrData[1]), loanAmount, paramsData);
-
-            removePermission(COMPOUND_CREATE_FLASH_LOAN);
-
-            logger.logFlashLoan("CompoundLeveragedLoan", loanAmount, _data[0], _addrData[0]);
+            require(msg.value >= _createInfo.depositAmount, "Must send correct amount of eth");
         }
+
+        // Send tokens to FL receiver
+        sendDeposit(_compReceiver, _exchangeData.destAddr);
+
+        // Pack the struct data
+        (uint[4] memory numData, address[6] memory cAddresses, bytes memory callData)
+                                            = _packData(_createInfo, _exchangeData);
+        bytes memory paramsData = abi.encode(numData, cAddresses, callData, address(this));
+
+        givePermission(_compReceiver);
+
+        lendingPool.flashLoan(_compReceiver, _exchangeData.srcAddr, loanAmount, paramsData);
+
+        removePermission(_compReceiver);
+
+        logger.Log(address(this), msg.sender, "CompoundLeveragedLoan",
+            abi.encode(_exchangeData.srcAddr, _exchangeData.destAddr, _exchangeData.srcAmount, _exchangeData.destAmount));
+    }
+
+    function sendDeposit(address payable _compoundReceiver, address _token) internal {
+        if (_token != ETH_ADDRESS) {
+            ERC20(_token).safeTransfer(_compoundReceiver, ERC20(_token).balanceOf(address(this)));
+        }
+
+        _compoundReceiver.transfer(address(this).balance);
+    }
+
+    function _packData(
+        CreateInfo memory _createInfo,
+        SaverExchangeCore.ExchangeData memory exchangeData
+    ) internal pure returns (uint[4] memory numData, address[6] memory cAddresses, bytes memory callData) {
+
+        numData = [
+            exchangeData.srcAmount,
+            exchangeData.destAmount,
+            exchangeData.minPrice,
+            exchangeData.price0x
+        ];
+
+        cAddresses = [
+            _createInfo.cCollAddress,
+            _createInfo.cBorrowAddress,
+            exchangeData.srcAddr,
+            exchangeData.destAddr,
+            exchangeData.exchangeAddr,
+            exchangeData.wrapper
+        ];
+
+        callData = exchangeData.callData;
     }
 }

@@ -4,11 +4,10 @@ pragma experimental ABIEncoderV2;
 import "../ProtocolInterface.sol";
 import "./ISoloMargin.sol";
 import "../../interfaces/ERC20.sol";
-import "../../constants/ConstantAddresses.sol";
 import "../../DS/DSAuth.sol";
 
-contract DydxSavingsProtocol is ProtocolInterface, ConstantAddresses, DSAuth {
-
+contract DydxSavingsProtocol is ProtocolInterface, DSAuth {
+    address public constant SOLO_MARGIN_ADDRESS = 0x1E0447b19BB6EcFdAe1e4AE1694b0C3659614e4e;
 
     ISoloMargin public soloMargin;
     address public savingsProxy;
@@ -94,7 +93,7 @@ contract DydxSavingsProtocol is ProtocolInterface, ConstantAddresses, DSAuth {
         return parBalances[daiMarketId];
     }
 
-    function getAccount(address _user, uint _index) public view returns(Account.Info memory) {
+    function getAccount(address _user, uint _index) public pure returns(Account.Info memory) {
         Account.Info memory account = Account.Info({
             owner: _user,
             number: _index

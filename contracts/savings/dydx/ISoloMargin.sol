@@ -27,4 +27,13 @@ abstract contract ISoloMargin {
     function setOperators(
         OperatorArg[] memory args
     ) public virtual;
+
+
+   function getNumMarkets() public view virtual returns (uint256);
+
+   function getMarketTokenAddress(uint256 marketId)
+        public
+        view
+        virtual
+        returns (address);
 }

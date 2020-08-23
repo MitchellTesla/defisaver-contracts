@@ -6,9 +6,11 @@
     "test": "test"
   },
   "scripts": {
-    "test": "npx mocha --exit --recursive --timeout 60000",
+    "test": "npx mocha --exit --recursive --timeout 6000000 --grep",
     "lint": "./node_modules/.bin/solhint -f table contracts/**/*.sol",
-    "build-contracts": "sol-merger \"./contracts/*.sol\" ./build"
+    "flatten-all": "sol-merger@3.1.0 \"./contracts/*.sol\" ./build",
+    "flatten": "npx sol-merger@3.1.0",
+    "verify": "node deployers/utils/verifier.js"
   },
   "repository": {
     "type": "git",
@@ -30,10 +32,19 @@
     "truffle-plugin-verify": "^0.3.6"
   },
   "devDependencies": {
+    "@nomiclabs/buidler": "^1.3.8",
+    "@nomiclabs/buidler-ethers": "^2.0.0",
+    "@nomiclabs/buidler-etherscan": "^1.3.3",
+    "@nomiclabs/buidler-solhint": "^1.3.3",
+    "@nomiclabs/buidler-waffle": "^2.0.0",
     "@openzeppelin/test-environment": "^0.1.4",
     "@openzeppelin/test-helpers": "^0.5.5",
     "@truffle/debug-utils": "^4.1.1",
+    "buidler-deploy": "^0.4.13",
+    "buidler-ethers-v5": "^0.2.2",
     "chai": "^4.2.0",
+    "ethereum-waffle": "^3.0.0",
+    "ethers": "^5.0.3",
     "husky": "^4.2.3",
     "mocha": "^7.1.2",
     "sol-merger": "^2.0.1",
@@ -41,7 +52,7 @@
   },
   "husky": {
     "hooks": {
-      "pre-commit": "truffle compile && npm run lint"
+      "pre-commit": "npx buidler compile --force && npm run lint"
     }
   }
 }

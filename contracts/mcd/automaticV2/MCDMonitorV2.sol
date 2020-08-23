@@ -1,39 +1,41 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
+import "../../interfaces/Manager.sol";
+import "../../interfaces/Vat.sol";
+import "../../interfaces/Spotter.sol";
+
+import "../../DS/DSMath.sol";
+import "../../auth/AdminAuth.sol";
+import "../../loggers/DefisaverLogger.sol";
+import "../../utils/GasBurner.sol";
+import "../../exchange/SaverExchangeCore.sol";
+
 import "./ISubscriptionsV2.sol";
 import "./StaticV2.sol";
 import "./MCDMonitorProxyV2.sol";
-import "../../constants/ConstantAddresses.sol";
-import "../../interfaces/GasTokenInterface.sol";
-import "../../DS/DSMath.sol";
-import "../maker/Manager.sol";
-import "../maker/Vat.sol";
-import "../maker/Spotter.sol";
-import "../../auth/AdminAuth.sol";
-import "../../loggers/AutomaticLogger.sol";
 
 
 /// @title Implements logic that allows bots to call Boost and Repay
-contract MCDMonitorV2 is AdminAuth, ConstantAddresses, DSMath, StaticV2 {
+contract MCDMonitorV2 is DSMath, AdminAuth, GasBurner, StaticV2 {
 
-    uint public REPAY_GAS_TOKEN = 30;
-    uint public BOOST_GAS_TOKEN = 19;
+    uint public REPAY_GAS_TOKEN = 25;
+    uint public BOOST_GAS_TOKEN = 25;
 
-    uint constant public MAX_GAS_PRICE = 80000000000; // 80 gwei
+    uint public MAX_GAS_PRICE = 200000000000; // 200 gwei
 
-    uint public REPAY_GAS_COST = 2200000;
-    uint public BOOST_GAS_COST = 1500000;
+    uint public REPAY_GAS_COST = 2500000;
+    uint public BOOST_GAS_COST = 2500000;
 
     MCDMonitorProxyV2 public monitorProxyContract;
     ISubscriptionsV2 public subscriptionsContract;
-    GasTokenInterface gasToken = GasTokenInterface(GAS_TOKEN_INTERFACE_ADDRESS);
-    address public automaticSaverProxyAddress;
+    address public mcdSaverTakerAddress;
 
-    Manager public manager = Manager(MANAGER_ADDRESS);
-    Vat public vat = Vat(VAT_ADDRESS);
-    Spotter public spotter = Spotter(SPOTTER_ADDRESS);
-    AutomaticLogger public logger = AutomaticLogger(AUTOMATIC_LOGGER_ADDRESS);
+    Manager public manager = Manager(0x5ef30b9986345249bc32d8928B7ee64DE9435E39);
+    Vat public vat = Vat(0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B);
+    Spotter public spotter = Spotter(0x65C79fcB50Ca1594B025960e539eD7A9a6D434A3);
+
+    DefisaverLogger public constant logger = DefisaverLogger(0x5c55B921f590a89C1Ebe84dF170E655a82b62126);
 
     /// @dev Addresses that are able to call methods for repay and boost
     mapping(address => bool) public approvedCallers;
@@ -43,90 +45,71 @@ contract MCDMonitorV2 is AdminAuth, ConstantAddresses, DSMath, StaticV2 {
         _;
     }
 
-    constructor(address _monitorProxy, address _subscriptions, address _automaticSaverProxyAddress) public {
+    constructor(address _monitorProxy, address _subscriptions, address _mcdSaverTakerAddress) public {
         approvedCallers[msg.sender] = true;
 
         monitorProxyContract = MCDMonitorProxyV2(_monitorProxy);
         subscriptionsContract = ISubscriptionsV2(_subscriptions);
-        automaticSaverProxyAddress = _automaticSaverProxyAddress;
+        mcdSaverTakerAddress = _mcdSaverTakerAddress;
     }
 
     /// @notice Bots call this method to repay for user when conditions are met
     /// @dev If the contract ownes gas token it will try and use it for gas price reduction
-    /// @param _data Array of uints representing [cdpId, daiAmount, minPrice, exchangeType, gasCost, 0xPrice]
-    /// @param _nextPrice Next price in Maker protocol
-    /// @param _joinAddr Address of collateral join for specific CDP
-    /// @param _exchangeAddress Address to call 0x exchange
-    /// @param _callData Bytes representing call data for 0x exchange
     function repayFor(
-        uint[6] memory _data, // cdpId, daiAmount, minPrice, exchangeType, gasCost, 0xPrice
-        uint256 _nextPrice,
+        uint _cdpId,
+        uint _nextPrice,
         address _joinAddr,
-        address _exchangeAddress,
-        bytes memory _callData
-    ) public payable onlyApproved {
-        if (gasToken.balanceOf(address(this)) >= BOOST_GAS_TOKEN) {
-            gasToken.free(BOOST_GAS_TOKEN);
-        }
+        SaverExchangeCore.ExchangeData memory _exchangeData
+    ) public payable onlyApproved burnGas(REPAY_GAS_TOKEN) {
 
-        uint ratioBefore;
-        bool isAllowed;
-        (isAllowed, ratioBefore) = canCall(Method.Repay, _data[0], _nextPrice);
+        (bool isAllowed, uint ratioBefore) = canCall(Method.Repay, _cdpId, _nextPrice);
         require(isAllowed);
 
         uint gasCost = calcGasCost(REPAY_GAS_COST);
-        _data[4] = gasCost;
 
-        monitorProxyContract.callExecute{value: msg.value}(subscriptionsContract.getOwner(_data[0]), automaticSaverProxyAddress, abi.encodeWithSignature("automaticRepay(uint256[6],address,address,bytes)", _data, _joinAddr, _exchangeAddress, _callData));
+        monitorProxyContract.callExecute{value: msg.value}(
+            subscriptionsContract.getOwner(_cdpId),
+            mcdSaverTakerAddress,
+            abi.encodeWithSignature(
+            "repayWithLoan(uint256,uint256,address,(address,address,uint256,uint256,uint256,address,address,bytes,uint256))",
+            _cdpId, gasCost, _joinAddr, _exchangeData));
 
-        uint ratioAfter;
-        bool isGoodRatio;
-        (isGoodRatio, ratioAfter) = ratioGoodAfter(Method.Repay, _data[0], _nextPrice);
-        // doesn't allow user to repay too much
+
+        (bool isGoodRatio, uint ratioAfter) = ratioGoodAfter(Method.Repay, _cdpId, _nextPrice);
         require(isGoodRatio);
 
         returnEth();
 
-        logger.logRepay(_data[0], msg.sender, _data[1], ratioBefore, ratioAfter);
+        logger.Log(address(this), msg.sender, "MCDRepay", abi.encode(_cdpId, _exchangeData.srcAmount, ratioBefore, ratioAfter));
     }
 
     /// @notice Bots call this method to boost for user when conditions are met
     /// @dev If the contract ownes gas token it will try and use it for gas price reduction
-    /// @param _data Array of uints representing [cdpId, collateralAmount, minPrice, exchangeType, gasCost, 0xPrice]
-    /// @param _nextPrice Next price in Maker protocol
-    /// @param _joinAddr Address of collateral join for specific CDP
-    /// @param _exchangeAddress Address to call 0x exchange
-    /// @param _callData Bytes representing call data for 0x exchange
     function boostFor(
-        uint[6] memory _data, // cdpId, daiAmount, minPrice, exchangeType, gasCost, 0xPrice
-        uint256 _nextPrice,
+        uint _cdpId,
+        uint _nextPrice,
         address _joinAddr,
-        address _exchangeAddress,
-        bytes memory _callData
-    ) public payable onlyApproved {
-        if (gasToken.balanceOf(address(this)) >= REPAY_GAS_TOKEN) {
-            gasToken.free(REPAY_GAS_TOKEN);
-        }
+        SaverExchangeCore.ExchangeData memory _exchangeData
+    ) public payable onlyApproved burnGas(BOOST_GAS_TOKEN)  {
 
-        uint ratioBefore;
-        bool isAllowed;
-        (isAllowed, ratioBefore) = canCall(Method.Boost, _data[0], _nextPrice);
+        (bool isAllowed, uint ratioBefore) = canCall(Method.Boost, _cdpId, _nextPrice);
         require(isAllowed);
 
         uint gasCost = calcGasCost(BOOST_GAS_COST);
-        _data[4] = gasCost;
 
-        monitorProxyContract.callExecute{value: msg.value}(subscriptionsContract.getOwner(_data[0]), automaticSaverProxyAddress, abi.encodeWithSignature("automaticBoost(uint256[6],address,address,bytes)", _data, _joinAddr, _exchangeAddress, _callData));
+        monitorProxyContract.callExecute{value: msg.value}(
+            subscriptionsContract.getOwner(_cdpId),
+            mcdSaverTakerAddress,
+            abi.encodeWithSignature(
+            "boostWithLoan(uint256,uint256,address,(address,address,uint256,uint256,uint256,address,address,bytes,uint256))",
+            _cdpId, gasCost, _joinAddr, _exchangeData));
 
-        uint ratioAfter;
-        bool isGoodRatio;
-        (isGoodRatio, ratioAfter) = ratioGoodAfter(Method.Boost, _data[0], _nextPrice);
-        // doesn't allow user to boost too much
+        (bool isGoodRatio, uint ratioAfter) = ratioGoodAfter(Method.Boost, _cdpId, _nextPrice);
         require(isGoodRatio);
 
         returnEth();
 
-        logger.logBoost(_data[0], msg.sender, _data[1], ratioBefore, ratioAfter);
+        logger.Log(address(this), msg.sender, "MCDBoost", abi.encode(_cdpId, _exchangeData.srcAmount, ratioBefore, ratioAfter));
     }
 
 /******************* INTERNAL METHODS ********************************/
@@ -250,6 +233,14 @@ contract MCDMonitorV2 is AdminAuth, ConstantAddresses, DSMath, StaticV2 {
         REPAY_GAS_COST = _gasCost;
     }
 
+    /// @notice Allows owner to change max gas price
+    /// @param _maxGasPrice New max gas price
+    function changeMaxGasPrice(uint _maxGasPrice) public onlyOwner {
+        require(_maxGasPrice < 500000000000);
+
+        MAX_GAS_PRICE = _maxGasPrice;
+    }
+
     /// @notice Allows owner to change the amount of gas token burned per function call
     /// @param _gasAmount Amount of gas token
     /// @param _isRepay Flag to know for which function we are setting the gas token amount
@@ -271,20 +262,5 @@ contract MCDMonitorV2 is AdminAuth, ConstantAddresses, DSMath, StaticV2 {
     /// @param _caller Bot address
     function removeCaller(address _caller) public onlyOwner {
         approvedCallers[_caller] = false;
-    }
-
-    /// @notice If any tokens gets stuck in the contract owner can withdraw it
-    /// @param _tokenAddress Address of the ERC20 token
-    /// @param _to Address of the receiver
-    /// @param _amount The amount to be sent
-    function transferERC20(address _tokenAddress, address _to, uint _amount) public onlyOwner {
-        ERC20(_tokenAddress).transfer(_to, _amount);
-    }
-
-    /// @notice If any Eth gets stuck in the contract owner can withdraw it
-    /// @param _to Address of the receiver
-    /// @param _amount The amount to be sent
-    function transferEth(address payable _to, uint _amount) public onlyOwner {
-        _to.transfer(_amount);
     }
 }

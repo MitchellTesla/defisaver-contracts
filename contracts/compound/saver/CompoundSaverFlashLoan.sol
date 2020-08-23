@@ -1,17 +1,20 @@
 pragma solidity ^0.6.0;
+pragma experimental ABIEncoderV2;
 
-import "../../flashloan/aave/FlashLoanReceiverBase.sol";
+import "../../utils/FlashLoanReceiverBase.sol";
 import "../../interfaces/DSProxyInterface.sol";
-import "../../interfaces/ERC20.sol";
+import "../../exchange/SaverExchangeCore.sol";
 
 /// @title Contract that receives the FL from Aave for Repays/Boost
-contract CompoundSaverFlashLoan is FlashLoanReceiverBase {
+contract CompoundSaverFlashLoan is FlashLoanReceiverBase, SaverExchangeCore {
     ILendingPoolAddressesProvider public LENDING_POOL_ADDRESS_PROVIDER = ILendingPoolAddressesProvider(0x24a42fD28C976A61Df5D00D0599C34c4f90748c8);
 
-    address payable public COMPOUND_SAVER_FLASH_PROXY;
+    address payable public COMPOUND_SAVER_FLASH_PROXY = 0x6423708d6B84Af237Ab309dF49f6b8Fb751f28FB;
     address public constant ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     address public owner;
+
+    using SafeERC20 for ERC20;
 
     constructor()
         FlashLoanReceiverBase(LENDING_POOL_ADDRESS_PROVIDER)
@@ -53,22 +56,24 @@ contract CompoundSaverFlashLoan is FlashLoanReceiverBase {
     /// @param _fee Fee of the FL
     /// @param _params Saver proxy params
     /// @return proxyData Formated function call data
-    function packFunctionCall(uint _amount, uint _fee, bytes memory _params) internal returns (bytes memory proxyData, address payable) {
+    function packFunctionCall(uint _amount, uint _fee, bytes memory _params) internal pure returns (bytes memory proxyData, address payable) {
         (
-            uint[5] memory data, // amount, minPrice, exchangeType, gasCost, 0xPrice
-            address[3] memory addrData, // cCollAddress, cBorrowAddress, exchangeAddress
-            bytes memory callData,
+            bytes memory exDataBytes,
+            address[2] memory cAddresses, // cCollAddress, cBorrowAddress
+            uint256 gasCost,
             bool isRepay,
             address payable proxyAddr
         )
-        = abi.decode(_params, (uint256[5],address[3],bytes,bool,address));
+        = abi.decode(_params, (bytes,address[2],uint256,bool,address));
+
+        ExchangeData memory _exData = unpackExchangeData(exDataBytes);
 
         uint[2] memory flashLoanData = [_amount, _fee];
 
         if (isRepay) {
-            proxyData = abi.encodeWithSignature("flashRepay(uint256[5],address[3],bytes,uint256[2])", data, addrData, callData, flashLoanData);
+            proxyData = abi.encodeWithSignature("flashRepay((address,address,uint256,uint256,uint256,address,address,bytes,uint256),address[2],uint256,uint256[2])", _exData, cAddresses, gasCost, flashLoanData);
         } else {
-            proxyData = abi.encodeWithSignature("flashBoost(uint256[5],address[3],bytes,uint256[2])", data, addrData, callData, flashLoanData);
+            proxyData = abi.encodeWithSignature("flashBoost((address,address,uint256,uint256,uint256,address,address,bytes,uint256),address[2],uint256,uint256[2])", _exData, cAddresses, gasCost, flashLoanData);
         }
 
         return (proxyData, proxyAddr);
@@ -80,20 +85,11 @@ contract CompoundSaverFlashLoan is FlashLoanReceiverBase {
     /// @param _amount Amount of tokens
     function sendLoanToProxy(address payable _proxy, address _reserve, uint _amount) internal {
         if (_reserve != ETH_ADDRESS) {
-            ERC20(_reserve).transfer(_proxy, _amount);
+            ERC20(_reserve).safeTransfer(_proxy, _amount);
         }
 
         _proxy.transfer(address(this).balance);
     }
 
-    /// @notice Sets the Saver flash proxy address
-    /// @dev Only callable once by the owner
-    /// @param _saverFlashProxy The flash proxy address
-    function setSaverFlashProxy(address payable _saverFlashProxy) public {
-        require(msg.sender == owner);
-
-        COMPOUND_SAVER_FLASH_PROXY = _saverFlashProxy;
-    }
-
-    receive() external override payable {}
+    receive() external override(SaverExchangeCore, FlashLoanReceiverBase) payable {}
 }

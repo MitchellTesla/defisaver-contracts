@@ -1,11 +1,13 @@
 pragma solidity ^0.6.0;
 
 import "../../interfaces/DSProxyInterface.sol";
-import "../../interfaces/ERC20.sol";
+import "../../utils/SafeERC20.sol";
 import "../../auth/AdminAuth.sol";
 
 /// @title Contract with the actuall DSProxy permission calls the automation operations
 contract CompoundMonitorProxy is AdminAuth {
+
+    using SafeERC20 for ERC20;
 
     uint public CHANGE_PERIOD;
     address public monitor;
@@ -125,7 +127,7 @@ contract CompoundMonitorProxy is AdminAuth {
     /// @param _token address of token to withdraw balance
     function withdrawToken(address _token) public onlyOwner {
         uint balance = ERC20(_token).balanceOf(address(this));
-        ERC20(_token).transfer(msg.sender, balance);
+        ERC20(_token).safeTransfer(msg.sender, balance);
     }
 
     /// @notice In case something is left in contract, owner is able to withdraw it

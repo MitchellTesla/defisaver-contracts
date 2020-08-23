@@ -3,7 +3,7 @@ pragma solidity ^0.6.0;
 import "../../interfaces/OsmMom.sol";
 import "../../interfaces/Osm.sol";
 import "../../auth/AdminAuth.sol";
-import "../maker/Manager.sol";
+import "../../interfaces/Manager.sol";
 
 contract MCDPriceVerifier is AdminAuth {
 
