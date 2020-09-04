@@ -66,9 +66,11 @@ contract MCDMonitorV2 is DSMath, AdminAuth, GasBurner, StaticV2 {
         require(isAllowed);
 
         uint gasCost = calcGasCost(REPAY_GAS_COST);
+        
+        address owner = subscriptionsContract.getOwner(_cdpId);
 
         monitorProxyContract.callExecute{value: msg.value}(
-            subscriptionsContract.getOwner(_cdpId),
+            owner,
             mcdSaverTakerAddress,
             abi.encodeWithSignature(
             "repayWithLoan(uint256,uint256,address,(address,address,uint256,uint256,uint256,address,address,bytes,uint256))",
@@ -80,7 +82,7 @@ contract MCDMonitorV2 is DSMath, AdminAuth, GasBurner, StaticV2 {
 
         returnEth();
 
-        logger.Log(address(this), msg.sender, "MCDRepay", abi.encode(_cdpId, _exchangeData.srcAmount, ratioBefore, ratioAfter));
+        logger.Log(address(this), owner, "AutomaticMCDRepay", abi.encode(ratioBefore, ratioAfter));
     }
 
     /// @notice Bots call this method to boost for user when conditions are met
@@ -96,9 +98,11 @@ contract MCDMonitorV2 is DSMath, AdminAuth, GasBurner, StaticV2 {
         require(isAllowed);
 
         uint gasCost = calcGasCost(BOOST_GAS_COST);
+        
+        address owner = subscriptionsContract.getOwner(_cdpId);
 
         monitorProxyContract.callExecute{value: msg.value}(
-            subscriptionsContract.getOwner(_cdpId),
+            owner,
             mcdSaverTakerAddress,
             abi.encodeWithSignature(
             "boostWithLoan(uint256,uint256,address,(address,address,uint256,uint256,uint256,address,address,bytes,uint256))",
@@ -109,7 +113,7 @@ contract MCDMonitorV2 is DSMath, AdminAuth, GasBurner, StaticV2 {
 
         returnEth();
 
-        logger.Log(address(this), msg.sender, "MCDBoost", abi.encode(_cdpId, _exchangeData.srcAmount, ratioBefore, ratioAfter));
+        logger.Log(address(this), owner, "AutomaticMCDBoost", abi.encode(ratioBefore, ratioAfter));
     }
 
 /******************* INTERNAL METHODS ********************************/

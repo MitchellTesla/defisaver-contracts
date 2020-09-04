@@ -16,8 +16,6 @@ abstract contract IMCDSubscriptions {
 
 contract MCDCloseTaker is MCDSaverProxyHelper {
 
-    address payable public constant MCD_CLOSE_FLASH_LOAN = 0xdFccc9C59c7361307d47c558ffA75840B32DbA29;
-
     address public constant SUBSCRIPTION_ADDRESS_NEW = 0xC45d4f6B6bf41b6EdAA58B01c4298B8d9078269a;
 
     address public constant DEFISAVER_LOGGER = 0x5c55B921f590a89C1Ebe84dF170E655a82b62126;
@@ -49,9 +47,10 @@ contract MCDCloseTaker is MCDSaverProxyHelper {
 
     function closeWithLoan(
         SaverExchangeCore.ExchangeData memory _exchangeData,
-        CloseData memory _closeData
+        CloseData memory _closeData,
+        address payable mcdCloseFlashLoan
     ) public payable {
-        MCD_CLOSE_FLASH_LOAN.transfer(msg.value); // 0x fee
+        mcdCloseFlashLoan.transfer(msg.value); // 0x fee
 
         if (_closeData.wholeDebt) {
             _closeData.daiAmount = getAllDebt(
@@ -65,15 +64,15 @@ contract MCDCloseTaker is MCDSaverProxyHelper {
                 = getCdpInfo(manager, _closeData.cdpId, manager.ilks(_closeData.cdpId));
         }
 
-        manager.cdpAllow(_closeData.cdpId, MCD_CLOSE_FLASH_LOAN, 1);
+        manager.cdpAllow(_closeData.cdpId, mcdCloseFlashLoan, 1);
 
         (uint[8] memory numData, address[5] memory addrData, bytes memory callData)
                                             = _packData(_closeData, _exchangeData);
         bytes memory paramsData = abi.encode(numData, addrData, callData, address(this), _closeData.toDai);
 
-        lendingPool.flashLoan(MCD_CLOSE_FLASH_LOAN, DAI_ADDRESS, _closeData.daiAmount, paramsData);
+        lendingPool.flashLoan(mcdCloseFlashLoan, DAI_ADDRESS, _closeData.daiAmount, paramsData);
 
-        manager.cdpAllow(_closeData.cdpId, MCD_CLOSE_FLASH_LOAN, 0);
+        manager.cdpAllow(_closeData.cdpId, mcdCloseFlashLoan, 0);
 
         // If sub. to automatic protection unsubscribe
         unsubscribe(SUBSCRIPTION_ADDRESS_NEW, _closeData.cdpId);

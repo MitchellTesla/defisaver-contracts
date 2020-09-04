@@ -91,6 +91,15 @@ contract CompShifter is CompoundSaverHelper {
 
     }
 
+    function repayAll(address _cTokenAddr) public {
+        address tokenAddr = getUnderlyingAddr(_cTokenAddr);
+        uint amount = ERC20(tokenAddr).balanceOf(address(this));
+
+        if (amount != 0) {
+            paybackDebt(amount, _cTokenAddr, tokenAddr, tx.origin);
+        }
+    }
+
     function depositCompound(address _tokenAddr, address _cTokenAddr, uint _amount) internal {
         approveCToken(_tokenAddr, _cTokenAddr);
 

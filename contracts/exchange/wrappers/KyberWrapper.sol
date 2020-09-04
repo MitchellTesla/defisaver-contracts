@@ -4,8 +4,9 @@ import "../../utils/SafeERC20.sol";
 import "../../interfaces/KyberNetworkProxyInterface.sol";
 import "../../interfaces/ExchangeInterfaceV2.sol";
 import "../../DS/DSMath.sol";
+import "../../auth/AdminAuth.sol";
 
-contract KyberWrapper is DSMath, ExchangeInterfaceV2 {
+contract KyberWrapper is DSMath, ExchangeInterfaceV2, AdminAuth {
 
     address public constant KYBER_ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address public constant KYBER_INTERFACE = 0x9AAb3f75489902f3a48495025729a0AF77d4b11e;
@@ -122,9 +123,9 @@ contract KyberWrapper is DSMath, ExchangeInterfaceV2 {
     /// @notice Send any leftover tokens, we use to clear out srcTokens after buy
     /// @param _srcAddr Source token address
     function sendLeftOver(address _srcAddr) internal {
-        if (_srcAddr == KYBER_ETH_ADDRESS) {
-            msg.sender.transfer(address(this).balance);
-        } else {
+        msg.sender.transfer(address(this).balance);
+
+        if (_srcAddr != KYBER_ETH_ADDRESS) {
             ERC20(_srcAddr).safeTransfer(msg.sender, ERC20(_srcAddr).balanceOf(address(this)));
         }
     }

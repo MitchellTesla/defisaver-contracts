@@ -13,7 +13,7 @@ module.exports = function(deployer, network, accounts) {
 
     deployer.then(async () => {
 
-        // STEP 1 (zameni u kodu novu adresu)
+        // STEP 1 (zameni u kodu i ovde, novu adresu)
         // await deployer.deploy(ShifterRegistry, {gas: 5000000, overwrite: deployAgain});
 
 
@@ -31,7 +31,7 @@ module.exports = function(deployer, network, accounts) {
         console.log('compShifterAddress', compShifterAddress);
         console.log('mcdShifterAddress', mcdShifterAddress);
 
-        const registry = await ShifterRegistry.at('0x988B6CFBf3332FF98FFBdED665b1F53a61f92612');
+        const registry = await ShifterRegistry.at('0x2612Af3A521c2df9EAF28422Ca335b04AdF3ac66');
         await registry.changeContractAddr('MCD_SHIFTER', mcdShifterAddress);
         await registry.changeContractAddr('COMP_SHIFTER', compShifterAddress);
         await registry.changeContractAddr('LOAN_SHIFTER_RECEIVER', loanShifterReceiverAddress);

@@ -5,8 +5,9 @@ import "../../interfaces/OasisInterface.sol";
 import "../../interfaces/TokenInterface.sol";
 import "../../DS/DSMath.sol";
 import "../../utils/SafeERC20.sol";
+import "../../auth/AdminAuth.sol";
 
-contract OasisTradeWrapper is DSMath, ExchangeInterfaceV2 {
+contract OasisTradeWrapper is DSMath, ExchangeInterfaceV2, AdminAuth {
 
     using SafeERC20 for ERC20;
 
@@ -92,13 +93,11 @@ contract OasisTradeWrapper is DSMath, ExchangeInterfaceV2 {
 
     /// @notice Send any leftover tokens, we use to clear out srcTokens after buy
     /// @param _srcAddr Source token address
-    function sendLeftOver(address _srcAddr) internal {
-         address srcAddr = ethToWethAddr(_srcAddr);
+     function sendLeftOver(address _srcAddr) internal {
+        msg.sender.transfer(address(this).balance);
 
-        if (srcAddr == WETH_ADDRESS) {
-            msg.sender.transfer(address(this).balance);
-        } else {
-            ERC20(srcAddr).safeTransfer(msg.sender, ERC20(srcAddr).balanceOf(address(this)));
+        if (_srcAddr != KYBER_ETH_ADDRESS) {
+            ERC20(_srcAddr).safeTransfer(msg.sender, ERC20(_srcAddr).balanceOf(address(this)));
         }
     }
 

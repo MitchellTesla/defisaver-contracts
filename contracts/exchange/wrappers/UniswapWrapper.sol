@@ -6,8 +6,9 @@ import "../../interfaces/ExchangeInterfaceV2.sol";
 import "../../interfaces/UniswapExchangeInterface.sol";
 import "../../interfaces/UniswapFactoryInterface.sol";
 import "../../DS/DSMath.sol";
+import "../../auth/AdminAuth.sol";
 
-contract UniswapWrapper is DSMath, ExchangeInterfaceV2 {
+contract UniswapWrapper is DSMath, ExchangeInterfaceV2, AdminAuth {
 
     address public constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant KYBER_ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
@@ -131,9 +132,9 @@ contract UniswapWrapper is DSMath, ExchangeInterfaceV2 {
     /// @notice Send any leftover tokens, we use to clear out srcTokens after buy
     /// @param _srcAddr Source token address
     function sendLeftOver(address _srcAddr) internal {
-        if (_srcAddr == WETH_ADDRESS) {
-            msg.sender.transfer(address(this).balance);
-        } else {
+        msg.sender.transfer(address(this).balance);
+
+        if (_srcAddr != KYBER_ETH_ADDRESS) {
             ERC20(_srcAddr).safeTransfer(msg.sender, ERC20(_srcAddr).balanceOf(address(this)));
         }
     }

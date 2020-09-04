@@ -25,7 +25,6 @@ contract MCDSaverTaker is MCDSaverProxy, GasBurner {
         uint256 maxDebt = getMaxDebt(_cdpId, manager.ilks(_cdpId));
 
         if (maxDebt >= _exchangeData.srcAmount) {
-            _exchangeData.srcAmount = maxDebt;
             boost(_exchangeData, _cdpId, _gasCost, _joinAddr);
             return;
         }
@@ -55,7 +54,6 @@ contract MCDSaverTaker is MCDSaverProxy, GasBurner {
         uint256 maxColl = getMaxCollateral(_cdpId, manager.ilks(_cdpId), _joinAddr);
 
         if (maxColl >= _exchangeData.srcAmount) {
-            _exchangeData.srcAmount = maxColl;
             repay(_exchangeData, _cdpId, _gasCost, _joinAddr);
             return;
         }

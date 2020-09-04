@@ -8,7 +8,7 @@ import "../../exchange/SaverExchangeCore.sol";
 
 contract MCDCreateTaker {
 
-    address payable public constant MCD_CREATE_FLASH_LOAN = 0xb09bCc172050fBd4562da8b229Cf3E45Dc3045A6;
+    address payable public constant MCD_CREATE_FLASH_LOAN = 0x71eC9a4fCE561c3936a511D9ebb05B60CF2bA519;
 
     address public constant DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public constant ETH_JOIN_ADDRESS = 0x2F0b23f53734252Bda2277357e97e1517d6B042A;

@@ -40,8 +40,6 @@ contract AaveImport is AaveHelper, AdminAuth {
         )
         = abi.decode(data, (address,address,uint256,address,address));
 
-        address payable payableProxy = payable(proxy);
-
         // withdraw eth
         TokenInterface(WETH_ADDRESS).withdraw(ethAmount);
 
@@ -51,22 +49,22 @@ contract AaveImport is AaveHelper, AdminAuth {
         address aBorrowToken = ILendingPool(lendingPoolCoreAddress).getReserveATokenAddress(borrowToken);
 
         // deposit eth on behalf of proxy
-        DSProxy(payableProxy).execute{value: ethAmount}(BASIC_PROXY, abi.encodeWithSignature("deposit(address,uint256)", ETH_ADDR, ethAmount));
+        DSProxy(payable(proxy)).execute{value: ethAmount}(BASIC_PROXY, abi.encodeWithSignature("deposit(address,uint256)", ETH_ADDR, ethAmount));
         // borrow needed amount to repay users borrow
-        (,uint256 borrowAmount,,uint256 borrowRateMode,,,,,,) = ILendingPool(lendingPool).getUserReserveData(borrowToken, user);
-        DSProxy(payableProxy).execute(BASIC_PROXY, abi.encodeWithSignature("borrow(address,uint256,uint256)", borrowToken, borrowAmount, borrowRateMode));
+        (,uint256 borrowAmount,,uint256 borrowRateMode,,,uint256 originationFee,,,) = ILendingPool(lendingPool).getUserReserveData(borrowToken, user);
+        borrowAmount += originationFee;
+        DSProxy(payable(proxy)).execute(BASIC_PROXY, abi.encodeWithSignature("borrow(address,uint256,uint256)", borrowToken, borrowAmount, borrowRateMode));
         // payback on behalf of user
         ERC20(borrowToken).safeApprove(proxy, borrowAmount);
-        DSProxy(payableProxy).execute(BASIC_PROXY, abi.encodeWithSignature("paybackOnBehalf(address,address,uint256,bool,address)", borrowToken, aBorrowToken, 0, true, user));
+        DSProxy(payable(proxy)).execute(BASIC_PROXY, abi.encodeWithSignature("paybackOnBehalf(address,address,uint256,bool,address)", borrowToken, aBorrowToken, 0, true, user));
         // pull tokens from user to proxy
-        uint256 collateralAmount = ERC20(aCollateralToken).balanceOf(user);
-        ERC20(aCollateralToken).safeTransferFrom(user, proxy, collateralAmount);
+        ERC20(aCollateralToken).safeTransferFrom(user, proxy, ERC20(aCollateralToken).balanceOf(user));
 
         // enable as collateral
-        DSProxy(payableProxy).execute(BASIC_PROXY, abi.encodeWithSignature("setUserUseReserveAsCollateral(address)", collateralToken));
+        DSProxy(payable(proxy)).execute(BASIC_PROXY, abi.encodeWithSignature("setUserUseReserveAsCollateral(address)", collateralToken));
 
         // withdraw deposited eth
-        DSProxy(payableProxy).execute(BASIC_PROXY, abi.encodeWithSignature("withdraw(address,address,uint256,bool)", ETH_ADDR, AETH_ADDRESS, ethAmount, false));
+        DSProxy(payable(proxy)).execute(BASIC_PROXY, abi.encodeWithSignature("withdraw(address,address,uint256,bool)", ETH_ADDR, AETH_ADDRESS, ethAmount, false));
 
         // deposit eth, get weth and return to sender
         TokenInterface(WETH_ADDRESS).deposit.value(address(this).balance)();

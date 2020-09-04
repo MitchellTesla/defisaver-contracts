@@ -34,6 +34,8 @@ contract MCDCloseFlashLoan is SaverExchangeCore, MCDSaverProxyHelper, FlashLoanR
         address proxy;
         uint flFee;
         bool toDai;
+        address reserve;
+        uint amount;
     }
 
     constructor() FlashLoanReceiverBase(LENDING_POOL_ADDRESS_PROVIDER) public {}
@@ -44,10 +46,6 @@ contract MCDCloseFlashLoan is SaverExchangeCore, MCDSaverProxyHelper, FlashLoanR
         uint256 _fee,
         bytes calldata _params)
     external override {
-
-        //check the contract has the specified balance
-        require(_amount <= getBalanceInternal(address(this), _reserve),
-            "Invalid balance for the contract");
 
         (
             uint[8] memory numData,
@@ -78,35 +76,35 @@ contract MCDCloseFlashLoan is SaverExchangeCore, MCDSaverProxyHelper, FlashLoanR
             joinAddr: addrData[4],
             proxy: proxy,
             flFee: _fee,
-            toDai: toDai
+            toDai: toDai,
+            reserve: _reserve,
+            amount: _amount
         });
 
-        address collAddr = closeCDP(closeData, exchangeData);
+        address user = DSProxy(payable(closeData.proxy)).owner();
 
-        transferFundsBackToPoolInternal(_reserve, _amount.add(_fee));
-
-        sendLeftover(collAddr, DAI_ADDRESS, tx.origin);
+        closeCDP(closeData, exchangeData, user);
     }
 
     function closeCDP(
         CloseData memory _closeData,
-        ExchangeData memory _exchangeData
-    ) internal returns (address) {
+        ExchangeData memory _exchangeData,
+        address _user
+    ) internal {
 
         paybackDebt(_closeData.cdpId, manager.ilks(_closeData.cdpId), _closeData.daiAmount); // payback whole debt
         drawMaxCollateral(_closeData.cdpId, _closeData.joinAddr, _closeData.collAmount); // draw whole collateral
 
         uint daiSwaped = 0;
         uint dfsFee = 0;
-        address user = DSProxy(payable(_closeData.proxy)).owner();
 
         if (_closeData.toDai) {
             _exchangeData.srcAmount = _closeData.collAmount;
             (, daiSwaped) = _sell(_exchangeData);
 
-            dfsFee = getFee(daiSwaped, user);
+            dfsFee = getFee(daiSwaped, _user);
         } else {
-            dfsFee = getFee(_closeData.daiAmount, user);
+            dfsFee = getFee(_closeData.daiAmount, _user);
 
             _exchangeData.destAmount = (_closeData.daiAmount + _closeData.flFee + dfsFee);
             (, daiSwaped) = _buy(_exchangeData);
@@ -114,11 +112,17 @@ contract MCDCloseFlashLoan is SaverExchangeCore, MCDSaverProxyHelper, FlashLoanR
 
         takeFee(dfsFee);
 
-        address tokenAddr = address(Join(_closeData.joinAddr).gem());
+        address tokenAddr = getVaultCollAddr(_closeData.joinAddr);
+
+        if (_closeData.toDai) {
+            tokenAddr = DAI_ADDRESS;
+        }
 
         require(getBalance(tokenAddr) >= _closeData.minAccepted, "Below min. number of eth specified");
 
-        return tokenAddr;
+        transferFundsBackToPoolInternal(_closeData.reserve, _closeData.amount.add(_closeData.flFee));
+
+        sendLeftover(tokenAddr, DAI_ADDRESS, payable(_user));
 
     }
 
@@ -167,6 +171,16 @@ contract MCDCloseFlashLoan is SaverExchangeCore, MCDSaverProxyHelper, FlashLoanR
         if (feeAmount > (_amount / 5)) {
             feeAmount = _amount / 5;
         }
+    }
+
+    function getVaultCollAddr(address _joinAddr) internal view returns (address) {
+        address tokenAddr = address(Join(_joinAddr).gem());
+
+        if (tokenAddr == WETH_ADDRESS) {
+            return KYBER_ETH_ADDRESS;
+        }
+
+        return tokenAddr;
     }
 
     function getPrice(bytes32 _ilk) public view returns (uint256) {

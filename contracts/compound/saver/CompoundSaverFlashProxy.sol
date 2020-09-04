@@ -92,7 +92,7 @@ contract CompoundSaverFlashProxy is SaverExchangeCore, CompoundSaverHelper  {
         if (collToken != borrowToken) {
             // get dfs fee
             borrowAmount -= getFee((borrowAmount + _flashLoanData[0]), user, _gasCost, _cAddresses[1]);
-            _exData.srcAmount = borrowAmount;
+            _exData.srcAmount = (borrowAmount + _flashLoanData[0]);
 
             (,swapAmount) = _sell(_exData);
         } else {
