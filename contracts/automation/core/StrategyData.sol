@@ -4,12 +4,12 @@ pragma experimental ABIEncoderV2;
 contract StrategyData {
 
     struct Trigger {
-        address contractAddr;
+        bytes32 id;
         bytes data;
     }
 
     struct Action {
-        address contractAddr;
+        bytes32 id;
         bytes data;
     }
 
