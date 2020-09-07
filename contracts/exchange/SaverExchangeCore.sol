@@ -48,7 +48,8 @@ contract SaverExchangeCore is SaverExchangeHelper, DSMath {
         if (exData.price0x > 0) {
             approve0xProxy(exData.srcAddr, exData.srcAmount);
 
-            (success, swapedTokens, tokensLeft) = takeOrder(exData, address(this).balance, ActionType.SELL);
+            uint ethAmount = exData.srcAddr == WETH_ADDRESS ? msg.value - exData.srcAmount : msg.value;
+            (success, swapedTokens, tokensLeft) = takeOrder(exData, ethAmount, ActionType.SELL);
 
             if (success) {
                 wrapper = exData.exchangeAddr;
@@ -94,7 +95,8 @@ contract SaverExchangeCore is SaverExchangeHelper, DSMath {
         if (exData.price0x > 0) {
             approve0xProxy(exData.srcAddr, exData.srcAmount);
 
-            (success, swapedTokens,) = takeOrder(exData, address(this).balance, ActionType.BUY);
+            uint ethAmount = exData.srcAddr == WETH_ADDRESS ? msg.value - exData.srcAmount : msg.value;
+            (success, swapedTokens,) = takeOrder(exData, ethAmount, ActionType.BUY);
 
             if (success) {
                 wrapper = exData.exchangeAddr;
@@ -133,6 +135,10 @@ contract SaverExchangeCore is SaverExchangeHelper, DSMath {
             writeUint256(_exData.callData, 36, _exData.srcAmount);
         } else {
             writeUint256(_exData.callData, 36, _exData.destAmount);
+        }
+
+        if (ZrxAllowlist(ZRX_ALLOWLIST_ADDR).isNonPayableAddr(_exData.exchangeAddr)) {
+            _ethAmount = 0;
         }
 
         if (ZrxAllowlist(ZRX_ALLOWLIST_ADDR).isZrxAddr(_exData.exchangeAddr)) {

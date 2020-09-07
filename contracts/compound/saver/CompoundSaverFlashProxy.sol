@@ -43,6 +43,7 @@ contract CompoundSaverFlashProxy is SaverExchangeCore, CompoundSaverHelper  {
 
         if (collToken != borrowToken) {
             // swap max coll + loanAmount
+            _exData.srcAmount = maxColl + _flashLoanData[0];
             (,swapAmount) = _sell(_exData);
 
             // get fee
