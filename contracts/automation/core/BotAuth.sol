@@ -2,13 +2,12 @@ pragma solidity ^0.6.0;
 
 import "../../auth/AdminAuth.sol";
 
-contract AuthorizedCaller is AdminAuth {
+contract BotAuth is AdminAuth {
 
     mapping (address => bool) public approvedCallers;
 
-    modifier onlyAuthCallers {
-        require(approvedCallers[msg.sender], "Must be authorized caller");
-        _;
+    function isApproved(address _caller) public view returns (bool) {
+        return approvedCallers[_caller];
     }
 
     /// @notice Adds a new bot address which will be able to call repay/boost

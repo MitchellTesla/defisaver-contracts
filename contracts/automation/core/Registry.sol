@@ -12,8 +12,8 @@ contract Registry is AdminAuth {
 
     mapping (bytes32 => Entry) public entries;
 
-    function getAddr(bytes32 _id) public view {
-        entries[_id].contractAddr;
+    function getAddr(bytes32 _id) public view returns (address) {
+        return entries[_id].contractAddr;
     }
 
     function addNewContract(bytes32 _id, address _contractAddr, uint _changePeriod) public onlyOwner {
