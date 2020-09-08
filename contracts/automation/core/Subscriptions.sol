@@ -5,8 +5,6 @@ import "./StrategyData.sol";
 
 contract Subscriptions is StrategyData {
 
-    // if mcd-ratio for id #4545 is under 190%, repay to 220%
-
     Strategy[] internal strategies;
 
     function subscribe(Strategy memory newStrategy) public {
