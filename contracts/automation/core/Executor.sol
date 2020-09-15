@@ -20,9 +20,8 @@ contract Executor is StrategyData {
     ) public {
         Strategy memory strategy = subscriptions.getStrategy(_strategyId);
 
-        // check bot and users auth
+        // check bot auth
         checkCallerAuth();
-        checkProxyAuth(strategy.proxy);
 
         // check if all the triggers are true
         checkTriggers(strategy, triggerCallData);
@@ -34,11 +33,6 @@ contract Executor is StrategyData {
     function checkCallerAuth() internal view {
         address botAuthAddr = registry.getAddr(keccak256("BotAuth"));
         require(BotAuth(botAuthAddr).isApproved(msg.sender), "msg.sender is not approved caller");
-    }
-
-    /// @notice Checks if we have the DSProxy authorization
-    function checkProxyAuth(address _proxy) internal view {
-
     }
 
     function checkTriggers(Strategy memory strategy, bytes[] memory triggerCallData) internal {
