@@ -8,7 +8,13 @@ import "../../exchange/SaverExchangeCore.sol";
 
 contract MCDCreateTaker {
 
+<<<<<<< Updated upstream
     address payable public constant MCD_CREATE_FLASH_LOAN = 0x71eC9a4fCE561c3936a511D9ebb05B60CF2bA519;
+=======
+    using SafeERC20 for ERC20;
+
+    address payable public constant MCD_CREATE_FLASH_LOAN = 0x44b622a7CD27653DBEF271e30e9359DADC02C768;
+>>>>>>> Stashed changes
 
     address public constant DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public constant ETH_JOIN_ADDRESS = 0x2F0b23f53734252Bda2277357e97e1517d6B042A;
