@@ -10,8 +10,8 @@ import "./Registry.sol";
 
 contract Executor is StrategyData {
 
-    Registry public registry = Registry(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
-    Subscriptions public subscriptions = Subscriptions(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
+    Registry public constant registry = Registry(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
+    Subscriptions public constant subscriptions = Subscriptions(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
     function callStrategy(
         uint _strategyId,
@@ -45,10 +45,12 @@ contract Executor is StrategyData {
     }
 
     function callActions(Strategy memory strategy, bytes[] memory actionsCallData) internal {
-        for (uint i = 0; i < strategy.actions.length; ++i) {
-            address actionAddr = registry.getAddr(strategy.actions[i].id);
+        address actionManagerProxyAddr = registry.getAddr(keccak256("ActionManagerProxy"));
 
-            DSProxyInterface(strategy.proxy).execute{value: msg.value}(actionAddr, actionsCallData[i]);
-        }
+        DSProxyInterface(strategy.proxy).execute{value: msg.value}(actionManagerProxyAddr,
+        abi.encodeWithSignature(
+            "takeAction(bytes[])",
+            actionsCallData
+        ));
     }
 }
