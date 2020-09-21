@@ -4,11 +4,13 @@ pragma experimental ABIEncoderV2;
 import "../core/Registry.sol";
 import "../../interfaces/ILendingPool.sol";
 import "../../auth/ProxyPermission.sol";
+import "./ActionExecutor.sol";
 
 contract ActionManagerProxy is ProxyPermission {
 
     Registry public constant registry = Registry(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
+    // TODO: take care of eth sending
     function takeAction(
         bytes[] memory actions
     ) public {
@@ -28,7 +30,7 @@ contract ActionManagerProxy is ProxyPermission {
                 actionExecutorAddr, flToken, flAmount, encodedActions);
 
         } else {
-            // TODO: call ActionExecutor
+            ActionExecutor(actionExecutorAddr).executeOperation(address(0), 0, 0, encodedActions);
         }
 
         removePermission(actionExecutorAddr);

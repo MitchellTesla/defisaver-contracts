@@ -47,10 +47,11 @@ contract Executor is StrategyData {
     function callActions(Strategy memory strategy, bytes[] memory actionsCallData) internal {
         address actionManagerProxyAddr = registry.getAddr(keccak256("ActionManagerProxy"));
 
-        DSProxyInterface(strategy.proxy).execute{value: msg.value}(actionManagerProxyAddr,
-        abi.encodeWithSignature(
-            "takeAction(bytes[])",
-            actionsCallData
+        DSProxyInterface(strategy.proxy).execute{value: msg.value}(
+            actionManagerProxyAddr,
+            abi.encodeWithSignature(
+                "takeAction(bytes[])",
+                actionsCallData
         ));
     }
 }

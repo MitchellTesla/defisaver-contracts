@@ -18,16 +18,22 @@ contract ActionExecutor {
 
         (bytes[] memory actions, address proxy) = abi.decode(_params, (bytes[], address));
 
+        bytes32[] memory responses = new bytes32[](actions.length);
+
          for (uint i = 0; i < actions.length; ++i) {
             (bytes32 id, bytes memory data) = abi.decode(actions[i], (bytes32, bytes));
 
             address actionAddr = registry.getAddr(id);
 
-            DSProxyInterface(proxy).execute{value: address(this).balance}(actionAddr,
+            responses[i] = DSProxyInterface(proxy).execute{value: address(this).balance}(actionAddr,
                 abi.encodeWithSignature(
-                "executeAction(bytes)",
-                data
+                "executeAction(bytes,bytes32[])",
+                data,
+                responses
             ));
         }
+
+
+        // TODO: return FL if there is any
     }
 }
