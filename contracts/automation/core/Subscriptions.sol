@@ -11,11 +11,6 @@ contract Subscriptions is StrategyData {
     Action[] internal actions;
     Trigger[] internal triggers;
 
-    struct StrategyInputData {
-        Trigger[] triggers;
-        Action[] actions;
-    }
-
     function subscribe(Trigger[] memory _triggers, Action[] memory _actions) public {
         uint[] memory triggerIds = new uint[](_triggers.length);
         uint[] memory actionsIds = new uint[](_actions.length);
