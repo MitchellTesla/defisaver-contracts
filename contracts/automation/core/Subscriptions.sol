@@ -2,6 +2,7 @@ pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "./StrategyData.sol";
+import "../../interfaces/DSProxyInterface.sol";
 
 // TODO: add logs
 contract Subscriptions is StrategyData {
@@ -10,43 +11,91 @@ contract Subscriptions is StrategyData {
     Action[] internal actions;
     Trigger[] internal triggers;
 
-    function subscribe(Strategy memory _newStrategy) public {
+    struct StrategyInputData {
+        Trigger[] triggers;
+        Action[] actions;
+    }
 
-        actions.push(Action({
-            id: bytes32("sd"),
-            data: bytes("dgd")
+    function subscribe(Trigger[] memory _triggers, Action[] memory _actions) public {
+        uint[] memory triggerIds = new uint[](_triggers.length);
+        uint[] memory actionsIds = new uint[](_actions.length);
+
+        // Populate triggers
+        for (uint i = 0; i < _triggers.length; ++i) {
+            triggers.push(Trigger({
+                id: _triggers[i].id,
+                data: _triggers[i].data
+            }));
+
+            triggerIds[i] = triggers.length - 1;
+        }
+
+        // Populate actions
+        for (uint i = 0; i < _actions.length; ++i) {
+            actions.push(Action({
+                id: _triggers[i].id,
+                data: _triggers[i].data
+            }));
+
+            actionsIds[i] = actions.length - 1;
+        }
+
+        strategies.push(Strategy({
+            user: getProxyOwner(msg.sender),
+            proxy: msg.sender,
+            active: true,
+            triggerIds: triggerIds,
+            actionIds: actionsIds
         }));
-
-        // strategies.push(Strategy({
-        //     user: _newStrategy.user,
-        //     proxy: msg.sender,
-        //     active: true,
-        //     triggers: triggers,
-        //     actions: actions
-        // }));
 
     }
 
-    // function update(uint _subId, Strategy memory updatedStrategy) public {
-    //     require(updatedStrategy.proxy == msg.sender, "msg.sender is not the users proxy");
+    function update(uint _subId, Trigger[] memory _triggers, Action[] memory _actions) public {
+        Strategy memory s = strategies[_subId];
+        require(s.user != address(0), "Strategy does not exist");
+        require(msg.sender == s.proxy, "Proxy not strategy owner");
 
-    //     Strategy memory s = strategies[_subId];
-    //     require(s.user != address(0), "Strategy does not exist");
-    //     require(s.proxy == updatedStrategy.proxy, "Not same proxy");
+        // update triggers
+        for (uint i = 0; i < _triggers.length; ++i) {
+            triggers[s.triggerIds[i]] = Trigger({
+                id: _triggers[i].id,
+                data: _triggers[i].data
+            });
+        }
 
-    //     strategies[_subId] = updatedStrategy;
-    // }
+        // update actions
+        for (uint i = 0; i < _actions.length; ++i) {
+            actions[s.actionIds[i]] = Action({
+                id: _actions[i].id,
+                data: _actions[i].data
+            });
+        }
+    }
 
-    // function unsubscribe(uint _subId) public {
-    //     Strategy memory s = strategies[_subId];
-    //     require(s.user != address(0), "Strategy does not exist");
+    function unsubscribe(uint _subId) public {
+        Strategy memory s = strategies[_subId];
+        require(s.user != address(0), "Strategy does not exist");
 
-    //     require(s.proxy == msg.sender, "msg.sender is not the users proxy");
+        require(s.proxy == msg.sender, "msg.sender is not the users proxy");
 
-    //     strategies[_subId].active = false;
-    // }
+        strategies[_subId].active = false;
+    }
+
+
+    function getProxyOwner(address _proxy) internal returns (address proxyOwner) {
+        proxyOwner = DSProxyInterface(_proxy).owner();
+        require(proxyOwner != address(0), "No proxy");
+    }
 
     ///////////////////// VIEW ONLY FUNCTIONS ////////////////////////////
+
+    function getTrigger(uint _triggerId) public view returns (Trigger memory) {
+        return triggers[_triggerId];
+    }
+
+    function getAction(uint _actionId) public view returns (Action memory) {
+        return actions[_actionId];
+    }
 
     function getStreategyCount() public view returns (uint) {
         return strategies.length;

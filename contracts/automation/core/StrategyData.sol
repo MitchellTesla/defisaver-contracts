@@ -17,8 +17,7 @@ contract StrategyData {
         address user;
         address proxy;
         bool active;
-
-        Trigger[] triggers;
-        Action[] actions;
+        uint[] triggerIds;
+        uint[] actionIds;
     }
 }

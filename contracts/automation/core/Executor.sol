@@ -36,8 +36,9 @@ contract Executor is StrategyData {
     }
 
     function checkTriggers(Strategy memory strategy, bytes[] memory triggerCallData) internal {
-        for (uint i = 0; i < strategy.triggers.length; ++i) {
-            address triggerAddr = registry.getAddr(strategy.triggers[i].id);
+        for (uint i = 0; i < strategy.triggerIds.length; ++i) {
+            Trigger memory trigger = subscriptions.getTrigger( strategy.triggerIds[i]);
+            address triggerAddr = registry.getAddr(trigger.id);
 
             bool isTriggered = TriggerInterface(triggerAddr).isTriggered(triggerCallData[i]);
             require(isTriggered, "Trigger not activated");
