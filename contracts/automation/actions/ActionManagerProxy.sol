@@ -8,7 +8,7 @@ import "./ActionExecutor.sol";
 
 contract ActionManagerProxy is ProxyPermission {
 
-    Registry public constant registry = Registry(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
+    Registry public constant registry = Registry(0xD833215cBcc3f914bD1C9ece3EE7BF8B14f841bb);
 
     // TODO: take care of eth sending
     function takeAction(

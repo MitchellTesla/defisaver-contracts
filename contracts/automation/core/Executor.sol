@@ -10,8 +10,8 @@ import "./Registry.sol";
 
 contract Executor is StrategyData {
 
-    Registry public constant registry = Registry(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
-    Subscriptions public constant subscriptions = Subscriptions(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
+    Registry public constant registry = Registry(0xD833215cBcc3f914bD1C9ece3EE7BF8B14f841bb);
+    Subscriptions public constant subscriptions = Subscriptions(0x9561C133DD8580860B6b7E504bC5Aa500f0f06a7);
 
     function callStrategy(
         uint _strategyId,
