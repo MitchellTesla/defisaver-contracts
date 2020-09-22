@@ -35,12 +35,12 @@ contract Executor is StrategyData {
         require(BotAuth(botAuthAddr).isApproved(msg.sender), "msg.sender is not approved caller");
     }
 
-    function checkTriggers(Strategy memory strategy, bytes[] memory triggerCallData) internal {
+    function checkTriggers(Strategy memory strategy, bytes[] memory triggerCallData) public {
         for (uint i = 0; i < strategy.triggerIds.length; ++i) {
-            Trigger memory trigger = subscriptions.getTrigger( strategy.triggerIds[i]);
+            Trigger memory trigger = subscriptions.getTrigger(strategy.triggerIds[i]);
             address triggerAddr = registry.getAddr(trigger.id);
 
-            bool isTriggered = TriggerInterface(triggerAddr).isTriggered(triggerCallData[i]);
+            bool isTriggered = TriggerInterface(triggerAddr).isTriggered(triggerCallData[i], trigger.data);
             require(isTriggered, "Trigger not activated");
         }
     }
