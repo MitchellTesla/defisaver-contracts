@@ -1,5 +1,5 @@
 pragma solidity ^0.6.0;
 
 abstract contract ActionInterface {
-    function executeAction(bytes memory) virtual public;
+    function executeAction(bytes memory, bytes32[] memory) virtual public returns (bytes32);
 }
