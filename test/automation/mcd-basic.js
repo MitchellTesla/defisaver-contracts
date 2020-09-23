@@ -13,12 +13,13 @@ const {
     fetchMakerAddresses,
     ETH_ADDRESS,
     ETH_JOIN_ADDRESS,
+    DAI_JOIN_ADDRESS,
     BAT_ADDRESS,
     WBTC_ADDRESS,
     WETH_ADDRESS,
     nullAddress,
     getDebugInfo,
-} = require('./helper.js');
+} = require('../helper.js');
 
 const DSProxy = contract.fromArtifact("DSProxy");
 const ProxyRegistryInterface = contract.fromArtifact("ProxyRegistryInterface");
@@ -26,19 +27,41 @@ const ProxyRegistryInterface = contract.fromArtifact("ProxyRegistryInterface");
 const GetCdps = contract.fromArtifact('GetCdps');
 const ExchangeInterface = contract.fromArtifact('ExchangeInterface');
 const DSSProxyActions = contract.fromArtifact('DssProxyActions');
-const MCDCloseTaker = contract.fromArtifact('MCDCloseTaker');
-const MCDSaverTaker = contract.fromArtifact('MCDSaverTaker');
+const Executor = contract.fromArtifact('Executor');
+const SubscriptionProxy = contract.fromArtifact('SubscriptionProxy');
 
-const mcdCloseTakerAddr = '0x254dffcd3277C0b1660F6d42EFbB754edaBAbC2B';
-const mcdCloseFlashLoanAddr = '0xdAA71FBBA28C946258DD3d5FcC9001401f72270F';
-
-const uniswapWrapperAddr = '0x0d3C71782055bD88A71b611972152d6e984EDF79';
-const oldUniswapWrapperAddr = '0x1e30124FDE14533231216D95F7798cD0061e5cf8';
-const mcdSaverTakerAddr = '0xafaa78182ad0ba15e32f525e49d575b3716a1e57';
+const executorAddr = '0x9b1f7F645351AF3631a656421eD2e40f2802E6c0';
+const subscriptionProxyAddr = '0xFcCeD5E997E7fb1D0594518D3eD57245bB8ed17E';
 
 const makerVersion = "1.0.6";
 
-describe("MCD-Close", accounts => {
+const OVER = 0;
+const UNDER = 1;
+
+const encodeMcdRatioTriggerData = (vaultId, ratio, type) => {
+    const encodeTriggerParams = web3.eth.abi.encodeParameters(
+        ['uint256','uint256', 'uint8'],
+        [vaultId, ratio, type]
+    );
+
+    return encodeTriggerParams;
+};
+
+const encodeMcdGenerateAction = (vaultId, amount, joinAddr) => {
+    const encodeActionParams = web3.eth.abi.encodeParameters(
+        ['uint256','uint256', 'address'],
+        [vaultId, amount, joinAddr]
+    );
+
+    const encodedAction = web3.eth.abi.encodeParameters(
+        ['bytes32','bytes'],
+        [web3.utils.keccak256('McdGenerate'), encodeTriggerParams]
+    );
+
+    return encodedAction;
+};
+
+describe("Automation-MCD-Basic", accounts => {
     let registry, proxy, proxyAddr, makerAddresses,
         web3LoanInfo, web3Exchange, collToken, boostAmount, borrowToken, repayAmount,
         collAmount, borrowAmount, getCdps, mcdSaverTaker, tokenId;
@@ -56,21 +79,25 @@ describe("MCD-Close", accounts => {
         proxyAddr = proxyInfo.proxyAddr;
         web3Proxy = new web3.eth.Contract(DSProxy.abi, proxyAddr);
         getCdps = await GetCdps.at(makerAddresses["GET_CDPS"]);
-        web3Exchange = new web3.eth.Contract(ExchangeInterface.abi, oldUniswapWrapperAddr);
-        mcdCloseTaker = await MCDCloseTaker.at(mcdCloseTakerAddr);
-        mcdSaverTaker = await MCDSaverTaker.at(mcdSaverTakerAddr);
-
 
     });
 
     it('... should create and subscribe ETH vault', async () => {
         let ilk = 'ETH_A';
         let collToken = ETH_ADDRESS;
+        const vaultId = await createVault(ilk, web3.utils.toWei('2', 'ether'), web3.utils.toWei('300', 'ether'));
 
-        const vaultId = await createVault(ilk, web3.utils.toWei('4', 'ether'), web3.utils.toWei('500', 'ether'));
+        const generateAmount = web3.utils.toWei('20', 'ether'); // 20 Dai
+        const minRatio = '';
 
-        const vaultInfo = await mcdSaverTaker.getCdpDetailedInfo(vaultId);
+        const mcdRatioTriggerData = encodeMcdRatioTriggerData(vaultId, minRatio, UNDER);
 
+        const data = web3.eth.abi.encodeFunctionCall(getAbiFunction(SubscriptionProxy, 'subscribe'),
+        [[{id: web3.utils.keccak256('McdRatioTrigger'), data: mcdRatioTriggerData}],
+        [{id: web3.utils.keccak256('McdGenerate'), data: '0x0'}]]);
+
+        await web3Proxy.methods['execute(address,bytes)']
+            (subscriptionProxyAddr, data).send({from: accounts[0], gas: 1000000});
 
     });
 
