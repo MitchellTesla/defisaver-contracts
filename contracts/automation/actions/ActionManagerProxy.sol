@@ -5,8 +5,9 @@ import "../core/Registry.sol";
 import "../../interfaces/ILendingPool.sol";
 import "../../auth/ProxyPermission.sol";
 import "./ActionExecutor.sol";
+import "../../flashloan/GeneralizedFLTaker.sol";
 
-contract ActionManagerProxy is ProxyPermission {
+contract ActionManagerProxy is GeneralizedFLTaker, ProxyPermission {
 
     Registry public constant registry = Registry(0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab);
 
