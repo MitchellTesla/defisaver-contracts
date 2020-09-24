@@ -3,7 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import "../../exchange/SaverExchangeCore.sol";
 import "./MCDCreateProxyActions.sol";
-import "../../utils/FlashLoanReceiverBase.sol";
+import "../../flashloan/FlashLoanReceiverBase.sol";
 import "../../interfaces/Manager.sol";
 import "../../interfaces/Join.sol";
 import "../../DS/DSProxy.sol";

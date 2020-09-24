@@ -2,7 +2,7 @@ pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "../../DS/DSProxy.sol";
-import "../../utils/FlashLoanReceiverBase.sol";
+import "../../flashloan/FlashLoanReceiverBase.sol";
 import "../../interfaces/DSProxyInterface.sol";
 import "../../exchange/SaverExchangeCore.sol";
 import "../../shifter/ShifterRegistry.sol";

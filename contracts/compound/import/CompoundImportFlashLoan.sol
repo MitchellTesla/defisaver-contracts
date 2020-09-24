@@ -1,6 +1,6 @@
 pragma solidity ^0.6.0;
 
-import "../../utils/FlashLoanReceiverBase.sol";
+import "../../flashloan/FlashLoanReceiverBase.sol";
 import "../../interfaces/ProxyRegistryInterface.sol";
 import "../../interfaces/CTokenInterface.sol";
 import "../../utils/SafeERC20.sol";

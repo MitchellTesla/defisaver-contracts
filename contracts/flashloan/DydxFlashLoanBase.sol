@@ -8,17 +8,26 @@ contract DydxFlashLoanBase {
 
     address public constant SOLO_MARGIN_ADDRESS = 0x1E0447b19BB6EcFdAe1e4AE1694b0C3659614e4e;
 
-    function _getMarketIdFromTokenAddress(address token)
+    function _getMarketIdFromTokenAddress(address _solo, address _token)
         internal
         view
         returns (uint256)
     {
-        return 0;
+        ISoloMargin solo = ISoloMargin(_solo);
+
+        uint numTokenIds = solo.getNumMarkets();
+
+        for (uint i = 0; i < numTokenIds; i++) {
+            if (solo.getMarketTokenAddress(i) == _token) {
+                return i;
+            }
+        }
+
     }
 
     function _getRepaymentAmountInternal(uint256 amount)
         internal
-        view
+        pure
         returns (uint256)
     {
         // Needs to be overcollateralize
@@ -32,7 +41,7 @@ contract DydxFlashLoanBase {
 
     function _getWithdrawAction(uint marketId, uint256 amount, address contractAddr)
         internal
-        view
+        pure
         returns (Actions.ActionArgs memory)
     {
         return
@@ -55,7 +64,7 @@ contract DydxFlashLoanBase {
 
     function _getCallAction(bytes memory data, address contractAddr)
         internal
-        view
+        pure
         returns (Actions.ActionArgs memory)
     {
         return
@@ -78,7 +87,7 @@ contract DydxFlashLoanBase {
 
     function _getDepositAction(uint marketId, uint256 amount, address contractAddr)
         internal
-        view
+        pure
         returns (Actions.ActionArgs memory)
     {
         return

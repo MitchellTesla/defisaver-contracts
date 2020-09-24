@@ -2,7 +2,7 @@ pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "../auth/ProxyPermission.sol";
-import "../utils/DydxFlashLoanBase.sol";
+import "./DydxFlashLoanBase.sol";
 import "../loggers/DefisaverLogger.sol";
 import "../interfaces/ERC20.sol";
 
@@ -17,13 +17,13 @@ contract DyDxFlashLoanTaker is DydxFlashLoanBase, ProxyPermission {
     /// @dev Receiver must send back WETH + 2 wei after executing transaction
     /// @dev Method is meant to be called from proxy and proxy will give authorization to _receiver
     /// @param _receiver Address of funds receiver
-    /// @param _ethAmount ETH amount that needs to be pulled from dydx    
+    /// @param _ethAmount ETH amount that needs to be pulled from dydx
     /// @param _encodedData Bytes with packed data
     function takeLoan(address _receiver, uint256 _ethAmount, bytes memory _encodedData) public {
         ISoloMargin solo = ISoloMargin(SOLO_MARGIN_ADDRESS);
 
         // Get marketId from token address
-        uint256 marketId = _getMarketIdFromTokenAddress(WETH_ADDR);
+        uint256 marketId = _getMarketIdFromTokenAddress(SOLO_MARGIN_ADDRESS, WETH_ADDR);
 
         // Calculate repay amount (_amount + (2 wei))
         // Approve transfer from

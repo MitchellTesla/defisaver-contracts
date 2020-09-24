@@ -1,6 +1,6 @@
 pragma solidity ^0.6.0;
 
-import "./SafeERC20.sol";
+import "../utils/SafeERC20.sol";
 
 interface IFlashLoanReceiver {
     function executeOperation(address _reserve, uint256 _amount, uint256 _fee, bytes calldata _params) external;

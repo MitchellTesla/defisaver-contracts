@@ -83,21 +83,21 @@ describe("Automation-MCD-Basic", accounts => {
     });
 
     it('... should create and subscribe ETH vault', async () => {
-        let ilk = 'ETH_A';
-        let collToken = ETH_ADDRESS;
-        const vaultId = await createVault(ilk, web3.utils.toWei('2', 'ether'), web3.utils.toWei('300', 'ether'));
+        // let ilk = 'ETH_A';
+        // let collToken = ETH_ADDRESS;
+        // const vaultId = await createVault(ilk, web3.utils.toWei('2', 'ether'), web3.utils.toWei('300', 'ether'));
 
-        const generateAmount = web3.utils.toWei('20', 'ether'); // 20 Dai
-        const minRatio = '';
+        // const generateAmount = web3.utils.toWei('20', 'ether'); // 20 Dai
+        // const minRatio = '';
 
-        const mcdRatioTriggerData = encodeMcdRatioTriggerData(vaultId, minRatio, UNDER);
+        // const mcdRatioTriggerData = encodeMcdRatioTriggerData(vaultId, minRatio, UNDER);
 
-        const data = web3.eth.abi.encodeFunctionCall(getAbiFunction(SubscriptionProxy, 'subscribe'),
-        [[{id: web3.utils.keccak256('McdRatioTrigger'), data: mcdRatioTriggerData}],
-        [{id: web3.utils.keccak256('McdGenerate'), data: '0x0'}]]);
+        // const data = web3.eth.abi.encodeFunctionCall(getAbiFunction(SubscriptionProxy, 'subscribe'),
+        // [[{id: web3.utils.keccak256('McdRatioTrigger'), data: mcdRatioTriggerData}],
+        // [{id: web3.utils.keccak256('McdGenerate'), data: '0x0'}]]);
 
-        await web3Proxy.methods['execute(address,bytes)']
-            (subscriptionProxyAddr, data).send({from: accounts[0], gas: 1000000});
+        // await web3Proxy.methods['execute(address,bytes)']
+        //    (subscriptionProxyAddr, data).send({from: accounts[0], gas: 1000000});
 
     });
 

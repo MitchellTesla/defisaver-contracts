@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 import "../../utils/GasBurner.sol";
 import "../../auth/AdminAuth.sol";
 import "../../auth/ProxyPermission.sol";
-import "../../utils/DydxFlashLoanBase.sol";
+import "../../flashloan/DydxFlashLoanBase.sol";
 import "../../loggers/DefisaverLogger.sol";
 import "../../interfaces/ProxyRegistryInterface.sol";
 import "../../interfaces/TokenInterface.sol";
@@ -36,7 +36,7 @@ contract AaveImportTaker is DydxFlashLoanBase, ProxyPermission {
         ISoloMargin solo = ISoloMargin(SOLO_MARGIN_ADDRESS);
 
         // Get marketId from token address
-        uint256 marketId = _getMarketIdFromTokenAddress(WETH_ADDR);
+        uint256 marketId = _getMarketIdFromTokenAddress(SOLO_MARGIN_ADDRESS, WETH_ADDR);
 
         // Calculate repay amount (_amount + (2 wei))
         // Approve transfer from

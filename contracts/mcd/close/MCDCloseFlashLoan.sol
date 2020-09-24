@@ -2,7 +2,7 @@ pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "../../mcd/saver/MCDSaverProxy.sol";
-import "../../utils/FlashLoanReceiverBase.sol";
+import "../../flashloan/FlashLoanReceiverBase.sol";
 import "../../auth/AdminAuth.sol";
 import "../../exchange/SaverExchangeCore.sol";
 import "../../mcd/saver/MCDSaverProxyHelper.sol";
