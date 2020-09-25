@@ -14,6 +14,7 @@ contract GeneralizedFLTaker is DydxFlashLoanBase {
     address public constant AAVE_LENDING_POOL_ADDRESSES = 0x24a42fD28C976A61Df5D00D0599C34c4f90748c8;
 
     // TODO: should we check if _amount request is avail. ?
+    // TODO: ETH/WETH check for dydx
     function takeLoan(
         address payable _receiver,
         address _token,

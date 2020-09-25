@@ -38,6 +38,10 @@ contract McdWithdraw is ActionInterface, DSMath {
         return bytes32(amount);
     }
 
+    function actionType() override public returns (uint8) {
+        return 1;
+    }
+
     function parseParamData(
         bytes memory _data,
         bytes32[] memory _returnValues

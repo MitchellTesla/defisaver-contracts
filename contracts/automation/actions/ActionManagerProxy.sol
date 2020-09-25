@@ -5,6 +5,7 @@ import "../core/Registry.sol";
 import "../../interfaces/ILendingPool.sol";
 import "../../auth/ProxyPermission.sol";
 import "./ActionExecutor.sol";
+import "./ActionInterface.sol";
 import "../../flashloan/GeneralizedFLTaker.sol";
 
 contract ActionManagerProxy is GeneralizedFLTaker, ProxyPermission {
@@ -19,17 +20,12 @@ contract ActionManagerProxy is GeneralizedFLTaker, ProxyPermission {
         (bool flActive, uint flAmount, address flToken) = checkFl(actions[0]);
 
         address payable actionExecutorAddr = payable(registry.getAddr(keccak256("ActionExecutor")));
+        bytes memory encodedActions = abi.encode(actions, address(this));
 
         givePermission(actionExecutorAddr);
 
-        bytes memory encodedActions = abi.encode(actions, address(this));
-
         if (flActive) {
-            address aaveLendingPool = registry.getAddr(keccak256("AaveLendingPool"));
-
-            ILendingPool(aaveLendingPool).flashLoan(
-                actionExecutorAddr, flToken, flAmount, encodedActions);
-
+            takeLoan(actionExecutorAddr, flToken, flAmount, encodedActions, LoanType.AAVE);
         } else {
             ActionExecutor(actionExecutorAddr).executeOperation(address(0), 0, 0, encodedActions);
         }
@@ -38,18 +34,14 @@ contract ActionManagerProxy is GeneralizedFLTaker, ProxyPermission {
     }
 
     function checkFl(bytes memory _firstAction) internal returns (bool, uint, address) {
-        // TODO: proper check
-        if (registry.getAddr(getActionId(_firstAction)) == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
-            return (true, 0, address(0));
+        (bytes32 id, bytes memory data) = abi.decode(_firstAction, (bytes32, bytes));
+        address payable actionExecutorAddr = payable(registry.getAddr(id));
+
+        if (ActionInterface(actionExecutorAddr).actionType() == 0) {
+
         }
 
         return (false, 0, address(0));
-    }
-
-    function getActionId(bytes memory _action) internal pure returns (bytes32 id) {
-        assembly {
-            id := mload(_action)
-        }
     }
 
 }

@@ -14,6 +14,9 @@ contract DfsSell is ActionInterface, SaverExchangeCore {
         return bytes32(exchangedAmount);
     }
 
+    function actionType() override public returns (uint8) {
+        return 1;
+    }
 
     function parseParamData(
         bytes memory _data,
