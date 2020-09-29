@@ -12,6 +12,7 @@ contract ActionExecutor is FlashLoanReceiverBase {
     Registry public constant registry = Registry(0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab);
 
     address public constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address public constant ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     ILendingPoolAddressesProvider public LENDING_POOL_ADDRESS_PROVIDER = ILendingPoolAddressesProvider(0x24a42fD28C976A61Df5D00D0599C34c4f90748c8);
 
@@ -94,7 +95,7 @@ contract ActionExecutor is FlashLoanReceiverBase {
     }
 
     function dydxPaybackLoan(address _proxy, address _loanTokenAddr, uint _amount) internal {
-        if (_loanTokenAddr == WETH_ADDRESS) {
+        if (_loanTokenAddr == WETH_ADDRESS || _loanTokenAddr == ETH_ADDRESS) {
             TokenInterface(WETH_ADDRESS).deposit{value: _amount + 2}();
             ERC20(WETH_ADDRESS).safeTransfer(_proxy, _amount + 2);
         } else {

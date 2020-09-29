@@ -51,7 +51,8 @@ contract Executor is StrategyData {
         DSProxyInterface(strategy.proxy).execute{value: msg.value}(
             actionManagerProxyAddr,
             abi.encodeWithSignature(
-                "takeAction(bytes[])",
+                "takeAction(uint[],bytes[])",
+                strategy.actionIds,
                 actionsCallData
         ));
     }

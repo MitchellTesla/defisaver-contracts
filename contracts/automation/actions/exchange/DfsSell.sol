@@ -6,7 +6,7 @@ import "../ActionInterface.sol";
 
 contract DfsSell is ActionInterface, SaverExchangeCore {
 
-    function executeAction(bytes memory _callData, bytes32[] memory _returnValues) override public returns (bytes32) {
+    function executeAction(uint _actionId, bytes memory _callData, bytes32[] memory _returnValues) override public returns (bytes32) {
         ExchangeData memory exchangeData = parseParamData(_callData, _returnValues);
 
         (, uint exchangedAmount) = _sell(exchangeData);

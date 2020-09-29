@@ -17,7 +17,7 @@ contract McdWithdraw is ActionInterface, DSMath {
 
     // TODO: where is the money supplied comming from, (DSProxy/User)?
 
-    function executeAction(bytes memory _callData, bytes32[] memory _returnValues) override public returns (bytes32) {
+    function executeAction(uint _actionId, bytes memory _callData, bytes32[] memory _returnValues) override public returns (bytes32) {
         (uint cdpId, uint amount, address joinAddr) = parseParamData(_callData, _returnValues);
 
         uint frobAmount = amount;

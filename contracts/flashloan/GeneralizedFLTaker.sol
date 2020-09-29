@@ -12,9 +12,11 @@ contract GeneralizedFLTaker is DydxFlashLoanBase {
     using SafeERC20 for ERC20;
 
     address public constant AAVE_LENDING_POOL_ADDRESSES = 0x24a42fD28C976A61Df5D00D0599C34c4f90748c8;
+    address public constant ETH_ADDR = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address public constant WETH_ADDR = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
     // TODO: should we check if _amount request is avail. ?
-    // TODO: ETH/WETH check for dydx
+    // TODO: Should AaveLendingPoolAddr be mutable?
     function takeLoan(
         address payable _receiver,
         address _token,
@@ -34,6 +36,11 @@ contract GeneralizedFLTaker is DydxFlashLoanBase {
         uint _amount,
         bytes memory _data
     ) internal {
+
+        if (_token == ETH_ADDR) {
+            _token = WETH_ADDR;
+        }
+
         ISoloMargin solo = ISoloMargin(SOLO_MARGIN_ADDRESS);
 
         // Get marketId from token address
