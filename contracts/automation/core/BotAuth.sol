@@ -2,11 +2,16 @@ pragma solidity ^0.6.0;
 
 import "../../auth/AdminAuth.sol";
 
+/// @title Handles authorization of who can call the execution of strategies
 contract BotAuth is AdminAuth {
 
     mapping (address => bool) public approvedCallers;
 
-    function isApproved(address _caller) public view returns (bool) {
+    /// @notice Checks if the caller is approved for the specific strategy
+    /// @dev Currently auth callers are approved for all strategies
+    /// @param _strategyId Id of strategy not used for this version
+    /// @param _caller Address of the caller
+    function isApproved(uint _strategyId, address _caller) public view returns (bool) {
         return approvedCallers[_caller];
     }
 

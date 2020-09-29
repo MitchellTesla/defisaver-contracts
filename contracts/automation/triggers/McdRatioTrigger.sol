@@ -6,7 +6,7 @@ import "../../interfaces/Vat.sol";
 import "../../interfaces/Spotter.sol";
 import "../core/Subscriptions.sol";
 
-import "./TriggerInterface.sol";
+import "../../interfaces/TriggerInterface.sol";
 
 contract McdRatioTrigger is TriggerInterface, DSMath {
 

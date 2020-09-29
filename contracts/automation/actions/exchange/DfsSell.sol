@@ -2,7 +2,7 @@ pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "../../../exchange/SaverExchangeCore.sol";
-import "../ActionInterface.sol";
+import "../../../interfaces/ActionInterface.sol";
 
 contract DfsSell is ActionInterface, SaverExchangeCore {
 

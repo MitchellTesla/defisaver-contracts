@@ -5,7 +5,7 @@ import "../../../interfaces/Manager.sol";
 import "../../../interfaces/Vat.sol";
 import "../../../interfaces/Join.sol";
 import "../../../DS/DSMath.sol";
-import "../ActionInterface.sol";
+import "../../../interfaces/ActionInterface.sol";
 
 contract McdWithdraw is ActionInterface, DSMath {
     address public constant MANAGER_ADDRESS = 0x5ef30b9986345249bc32d8928B7ee64DE9435E39;

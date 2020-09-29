@@ -1,16 +1,22 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
-import "./StrategyData.sol";
 import "../../interfaces/DSProxyInterface.sol";
+import "../../loggers/DefisaverLogger.sol";
+import "./StrategyData.sol";
 
-// TODO: add logs
+/// @title Storage of actions and triggers which can be added/removed and modified
 contract Subscriptions is StrategyData {
+
+    DefisaverLogger public constant logger = DefisaverLogger(0x5c55B921f590a89C1Ebe84dF170E655a82b62126);
 
     Strategy[] internal strategies;
     Action[] internal actions;
     Trigger[] internal triggers;
 
+    /// @notice Subscribes a new strategy for a user
+    /// @param _triggers Array of trigger data
+    /// @param _actions Array of action data
     function subscribe(Trigger[] memory _triggers, Action[] memory _actions) public {
         uint[] memory triggerIds = new uint[](_triggers.length);
         uint[] memory actionsIds = new uint[](_actions.length);
@@ -28,8 +34,8 @@ contract Subscriptions is StrategyData {
         // Populate actions
         for (uint i = 0; i < _actions.length; ++i) {
             actions.push(Action({
-                id: _triggers[i].id,
-                data: _triggers[i].data
+                id: _actions[i].id,
+                data: _actions[i].data
             }));
 
             actionsIds[i] = actions.length - 1;
@@ -43,8 +49,15 @@ contract Subscriptions is StrategyData {
             actionIds: actionsIds
         }));
 
+        logger.Log(address(this), msg.sender, "Subscribe", abi.encode(strategies.length - 1));
     }
 
+    // TODO: what if we have more/less actions then in the original strategy?
+
+    /// @notice Update an existing strategy
+    /// @param _subId Subscription id
+    /// @param _triggers Array of trigger data
+    /// @param _actions Array of action data
     function update(uint _subId, Trigger[] memory _triggers, Action[] memory _actions) public {
         Strategy memory s = strategies[_subId];
         require(s.user != address(0), "Strategy does not exist");
@@ -65,15 +78,20 @@ contract Subscriptions is StrategyData {
                 data: _actions[i].data
             });
         }
+
+        logger.Log(address(this), msg.sender, "Update", abi.encode(_subId));
     }
 
+    /// @notice Unsubscribe an existing strategy
+    /// @param _subId Subscription id
     function unsubscribe(uint _subId) public {
         Strategy memory s = strategies[_subId];
         require(s.user != address(0), "Strategy does not exist");
-
-        require(s.proxy == msg.sender, "msg.sender is not the users proxy");
+        require(msg.sender == s.proxy, "Proxy not strategy owner");
 
         strategies[_subId].active = false;
+
+        logger.Log(address(this), msg.sender, "Unsubscribe", abi.encode(_subId));
     }
 
 

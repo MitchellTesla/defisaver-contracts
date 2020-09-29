@@ -1,14 +1,14 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
-import "../FLActionInterface.sol";
+import "../../../interfaces/FLActionInterface.sol";
 import "../../core/Subscriptions.sol";
 
 contract FLTaker is FLActionInterface {
 
     Subscriptions public constant subscriptions = Subscriptions(0x5b1869D9A4C187F2EAa108f3062412ecf0526b24);
 
-    function executeAction(uint _actionId, bytes memory _callData, bytes32[] memory _returnValues) override public returns (bytes memory) {
+    function executeAction(uint _actionId, bytes memory _callData) override public returns (bytes memory) {
 
         (uint amount, address token, uint8 flType) = parseParamData(_callData);
 

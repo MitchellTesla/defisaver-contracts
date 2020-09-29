@@ -8,7 +8,7 @@ import "../../../interfaces/Vat.sol";
 import "../../../interfaces/DaiJoin.sol";
 import "../../../interfaces/Jug.sol";
 import "../../../DS/DSMath.sol";
-import "../ActionInterface.sol";
+import "../../../interfaces/ActionInterface.sol";
 
 contract McdGenerate is ActionInterface, DSMath, MCDSaverProxyHelper {
     address public constant MANAGER_ADDRESS = 0x5ef30b9986345249bc32d8928B7ee64DE9435E39;

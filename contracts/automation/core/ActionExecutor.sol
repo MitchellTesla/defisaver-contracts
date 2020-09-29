@@ -1,12 +1,13 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
-import "../core/Registry.sol";
 import "../../interfaces/DSProxyInterface.sol";
 import "../../interfaces/TokenInterface.sol";
 import "../../savings/dydx/ISoloMargin.sol";
 import "../../flashloan/FlashLoanReceiverBase.sol";
+import "../core/Registry.sol";
 
+/// @title Executes a series of actions by calling the users DSProxy
 contract ActionExecutor is FlashLoanReceiverBase {
 
     Registry public constant registry = Registry(0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab);
@@ -21,8 +22,18 @@ contract ActionExecutor is FlashLoanReceiverBase {
 
     enum FlType { NO_LOAN, AAVE_LOAN, DYDX_LOAN }
 
+    /// @notice Executes a series of action through dsproxy
+    /// @dev If first action is FL it's skipped
+    /// @param _actions Array of actions (their callData)
+    /// @param _actionIds Array of action ids
+    /// @param _proxy DsProxy address of the user
+    /// @param _loanTokenAddr Token address of the loaned token
+    /// @param _loanAmount Loan amount
+    /// @param _feeAmount Fee Loan amount
+    /// @param _flType Type of Flash loan
     function callActions(
         bytes[] memory _actions,
+        uint[] memory _actionIds,
         address _proxy,
         address _loanTokenAddr,
         uint _loanAmount,
@@ -32,6 +43,7 @@ contract ActionExecutor is FlashLoanReceiverBase {
         bytes32[] memory responses = new bytes32[](_actions.length);
         uint i = 0;
 
+        // Skip if FL and push first response as amount FL taken
         if (_flType != FlType.NO_LOAN) {
             i = 1;
             responses[0] = bytes32(_loanAmount);
@@ -44,7 +56,8 @@ contract ActionExecutor is FlashLoanReceiverBase {
 
             responses[i] = DSProxyInterface(_proxy).execute{value: address(this).balance}(actionAddr,
                 abi.encodeWithSignature(
-                "executeAction(bytes,bytes32[])",
+                "executeAction(uint256,bytes,bytes32[])",
+                _actionIds[i],
                 data,
                 responses
             ));
@@ -59,7 +72,7 @@ contract ActionExecutor is FlashLoanReceiverBase {
         }
     }
 
-    // Aave entry point
+    /// @notice Aave entry point, will be called if aave FL is taken
     function executeOperation(
         address _tokenAddr,
         uint256 _amount,
@@ -68,13 +81,14 @@ contract ActionExecutor is FlashLoanReceiverBase {
     public override {
         address proxy;
         bytes[] memory actions;
+        uint[] memory actionIds;
 
-        (actions, proxy, _tokenAddr, _amount, _fee)
-            = abi.decode(_params, (bytes[],address,address,uint256,uint256));
-        callActions(actions, proxy, _tokenAddr, _amount, _fee, FlType.AAVE_LOAN);
+        (actions, actionIds, proxy, _tokenAddr, _amount)
+            = abi.decode(_params, (bytes[],uint[],address,address,uint256));
+        callActions(actions, actionIds, proxy, _tokenAddr, _amount, _fee, FlType.AAVE_LOAN);
     }
 
-    // DYDX FL entry point
+    /// @notice  DyDx FL entry point, will be called if aave FL is taken
     function callFunction(
         address sender,
         Account.Info memory account,
@@ -83,17 +97,18 @@ contract ActionExecutor is FlashLoanReceiverBase {
 
         (
             bytes[] memory actions,
+            uint[] memory actionIds,
             address proxy,
             address tokenAddr,
-            uint amount,
-            uint fee
+            uint amount
         )
-        = abi.decode(data, (bytes[],address,address,uint256,uint256));
+        = abi.decode(data, (bytes[],uint[],address,address,uint256));
 
-        callActions(actions, proxy, tokenAddr, amount, fee, FlType.DYDX_LOAN);
+        callActions(actions, actionIds, proxy, tokenAddr, amount, 0, FlType.DYDX_LOAN);
 
     }
 
+    /// @notice Returns the FL amount for DyDx to the DsProxy
     function dydxPaybackLoan(address _proxy, address _loanTokenAddr, uint _amount) internal {
         if (_loanTokenAddr == WETH_ADDRESS || _loanTokenAddr == ETH_ADDRESS) {
             TokenInterface(WETH_ADDRESS).deposit{value: _amount + 2}();

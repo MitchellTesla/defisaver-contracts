@@ -1,30 +1,30 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
-import "../core/Registry.sol";
-
 import "../../interfaces/ILendingPool.sol";
 import "../../auth/ProxyPermission.sol";
-import "./ActionExecutor.sol";
-import "./FLActionInterface.sol";
+import "../../interfaces/FLActionInterface.sol";
 import "../../flashloan/GeneralizedFLTaker.sol";
+import "../core/Registry.sol";
+import "./ActionExecutor.sol";
 
+/// @title Handle FL taking and calls action executor
 contract ActionManagerProxy is GeneralizedFLTaker, ProxyPermission {
 
     Registry public constant registry = Registry(0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab);
 
-    // TODO: take care of eth sending
-    function takeAction(
-        uint[] memory _actionIds,
-        bytes[] memory actions
-    ) public {
-
-        (uint flAmount, address flToken, uint8 flType) = checkFl(_actionIds[0], actions[0]);
+    /// @notice Checks and takes flash loan and calls Action Executor
+    /// @param _actionIds All of the actionIds for the strategy
+    /// @param _actionsCallData All input data needed to execute actions
+    function manageActions(uint[] memory _actionIds, bytes[] memory _actionsCallData) public payable {
+        (uint flAmount, address flToken, uint8 flType) = checkFl(_actionIds[0], _actionsCallData[0]);
 
         address payable actionExecutorAddr = payable(registry.getAddr(keccak256("ActionExecutor")));
-        bytes memory encodedActions = abi.encode(actions, address(this));
+        bytes memory encodedActions = abi.encode(_actionsCallData, _actionIds, address(this), flToken, flAmount);
 
         givePermission(actionExecutorAddr);
+
+        actionExecutorAddr.transfer(msg.value);
 
         if (flType != 0) {
             takeLoan(actionExecutorAddr, flToken, flAmount, encodedActions, LoanType(flType));
@@ -35,13 +35,15 @@ contract ActionManagerProxy is GeneralizedFLTaker, ProxyPermission {
         removePermission(actionExecutorAddr);
     }
 
+    /// @notice Checks if the first action is a FL and gets it's data
+    /// @param _actionId Id of first action
+    /// @param _firstAction First action call data
     function checkFl(uint _actionId, bytes memory _firstAction) internal returns (uint256, address, uint8) {
         (bytes32 id, bytes memory data) = abi.decode(_firstAction, (bytes32, bytes));
         address payable actionExecutorAddr = payable(registry.getAddr(id));
 
         if (FLActionInterface(actionExecutorAddr).actionType() == 0) {
-            bytes32[] memory _returnValues;
-            bytes memory flData = FLActionInterface(actionExecutorAddr).executeAction(_actionId, data, _returnValues);
+            bytes memory flData = FLActionInterface(actionExecutorAddr).executeAction(_actionId, data);
             (uint flAmount, address loanAddr, uint8 flType) = abi.decode(flData, (uint256,address,uint8));
 
             return (flAmount, loanAddr, flType);

@@ -3,9 +3,9 @@ pragma experimental ABIEncoderV2;
 
 import "../../DS/DSGuard.sol";
 import "../../DS/DSAuth.sol";
-
 import "./Subscriptions.sol";
 
+/// @title Handles auth and calls subscription contract
 contract SubscriptionProxy is StrategyData {
 
     address public constant FACTORY_ADDRESS = 0x5a15566417e6C1c9546523066500bDDBc53F88C7;
