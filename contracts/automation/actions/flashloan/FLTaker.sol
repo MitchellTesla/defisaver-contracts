@@ -6,7 +6,7 @@ import "../../core/Subscriptions.sol";
 
 contract FLTaker is FLActionInterface {
 
-    Subscriptions public constant subscriptions = Subscriptions(0x5b1869D9A4C187F2EAa108f3062412ecf0526b24);
+    Subscriptions public constant subscriptions = Subscriptions(0x76a185a4f66C0d09eBfbD916e0AD0f1CDF6B911b);
 
     function executeAction(uint _actionId, bytes memory _callData) override public returns (bytes memory) {
 

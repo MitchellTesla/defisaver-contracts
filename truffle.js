@@ -33,7 +33,7 @@ module.exports = {
     },
     moonnet: {
         provider: function() {
-            return new HDWalletProvider('0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d', process.env.MOON_NET_NODE);
+            return new HDWalletProvider(mnemonic, process.env.MOON_NET_NODE);
         },
         network_id: '1',
         gas: 6700000,

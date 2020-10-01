@@ -25,7 +25,7 @@ module.exports = async (deployer, network, accounts) => {
 
     // // Step 2.
 
-    // const registryAddr = '0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab';
+    // const registryAddr = '0xD1E8EA7709e85b22B846fb6EB5a411a348279A8a';
 
     // await deployer.deploy(Executor, {gas: 6720000, overwrite: deployAgain});
     // const executorAddress = (await Executor.deployed()).address;

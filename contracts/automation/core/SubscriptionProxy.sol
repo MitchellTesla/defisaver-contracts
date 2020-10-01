@@ -9,8 +9,9 @@ import "./Subscriptions.sol";
 contract SubscriptionProxy is StrategyData {
 
     address public constant FACTORY_ADDRESS = 0x5a15566417e6C1c9546523066500bDDBc53F88C7;
-    address public constant EXECUTOR_ADDRESS = 0x9b1f7F645351AF3631a656421eD2e40f2802E6c0;
-    address public constant SUBSCRIPTION_ADDRESS = 0x5b1869D9A4C187F2EAa108f3062412ecf0526b24;
+
+    address public constant EXECUTOR_ADDRESS = 0x1fe73e3525E709D0FBfcd089e0158c5248d0328e;
+    address public constant SUBSCRIPTION_ADDRESS = 0x76a185a4f66C0d09eBfbD916e0AD0f1CDF6B911b;
 
     function subscribe(Trigger[] memory _triggers, Action[] memory _actions) public {
         address currAuthority = address(DSAuth(address(this)).authority());
