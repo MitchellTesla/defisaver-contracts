@@ -28,6 +28,11 @@ contract Registry is AdminAuth {
 
     /////////////////////////// ADMIN ONLY FUNCTIONS ///////////////////////////
 
+    // TODO: REMOVE ONLY FOR TESTING
+    function changeInsant(bytes32 _id, address _contractAddr) public onlyOwner {
+        entries[_id].contractAddr = _contractAddr;
+    }
+
     /// @notice Adds a new contract to the registry
     /// @param _id Id of contract
     /// @param _contractAddr Address of the contract

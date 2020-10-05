@@ -14,8 +14,6 @@ contract McdRatioTrigger is TriggerInterface, DSMath {
     Vat public constant vat = Vat(0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B);
     Spotter public constant spotter = Spotter(0x65C79fcB50Ca1594B025960e539eD7A9a6D434A3);
 
-    Subscriptions public constant subscriptions = Subscriptions(0x76a185a4f66C0d09eBfbD916e0AD0f1CDF6B911b);
-
     enum RatioState { OVER, UNDER }
 
     function isTriggered(bytes memory _callData, bytes memory _triggerData) public override returns (bool) {

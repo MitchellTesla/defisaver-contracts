@@ -12,7 +12,7 @@ import "./Registry.sol";
 contract Executor is StrategyData {
 
     Registry public constant registry = Registry(0xD1E8EA7709e85b22B846fb6EB5a411a348279A8a);
-    Subscriptions public constant subscriptions = Subscriptions(0x76a185a4f66C0d09eBfbD916e0AD0f1CDF6B911b);
+    // Subscriptions public constant subscriptions = Subscriptions(0x76a185a4f66C0d09eBfbD916e0AD0f1CDF6B911b);
 
     /// @notice Checks all the triggers and executes actions
     /// @dev Only auhtorized callers can execute it
@@ -24,14 +24,16 @@ contract Executor is StrategyData {
         bytes[] memory _triggerCallData,
         bytes[] memory _actionsCallData
     ) public {
-        Strategy memory strategy = subscriptions.getStrategy(_strategyId);
+        address subscriptionsAddr = registry.getAddr(keccak256("Subscriptions"));
+
+        Strategy memory strategy = Subscriptions(subscriptionsAddr).getStrategy(_strategyId);
         require(strategy.active, "Strategy is not active");
 
         // check bot auth
         checkCallerAuth(_strategyId);
 
         // check if all the triggers are true
-        checkTriggers(strategy, _triggerCallData);
+        checkTriggers(strategy, _triggerCallData, subscriptionsAddr);
 
         // execute actions
         callActions(strategy, _actionsCallData);
@@ -47,9 +49,9 @@ contract Executor is StrategyData {
     /// @notice Checks if all the triggers are true, reverts if not
     /// @param _strategy Strategy data we have in storage
     /// @param _triggerCallData All input data needed to execute triggers
-    function checkTriggers(Strategy memory _strategy, bytes[] memory _triggerCallData) public {
+    function checkTriggers(Strategy memory _strategy, bytes[] memory _triggerCallData, address _subscriptionsAddr) public {
         for (uint i = 0; i < _strategy.triggerIds.length; ++i) {
-            Trigger memory trigger = subscriptions.getTrigger(_strategy.triggerIds[i]);
+            Trigger memory trigger = Subscriptions(_subscriptionsAddr).getTrigger(_strategy.triggerIds[i]);
             address triggerAddr = registry.getAddr(trigger.id);
 
             bool isTriggered = TriggerInterface(triggerAddr).isTriggered(_triggerCallData[i], trigger.data);
