@@ -30,13 +30,13 @@ contract Executor is StrategyData {
         require(strategy.active, "Strategy is not active");
 
         // check bot auth
-        checkCallerAuth(_strategyId);
+        // checkCallerAuth(_strategyId);
 
         // check if all the triggers are true
-        checkTriggers(strategy, _triggerCallData, subscriptionsAddr);
+        // checkTriggers(strategy, _triggerCallData, subscriptionsAddr);
 
-        // execute actions
-        callActions(strategy, _actionsCallData);
+        // // execute actions
+        // callActions(strategy, _actionsCallData);
     }
 
     /// @notice Checks if msg.sender has auth, reverts if not

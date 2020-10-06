@@ -35,9 +35,9 @@ const Executor = contract.fromArtifact('Executor');
 const SubscriptionProxy = contract.fromArtifact('SubscriptionProxy');
 const Subscriptions = contract.fromArtifact('Subscriptions');
 
-const executorAddr = '0x1458a2aB1DA4c0cc02A2f29b2cfB8Cd101362506';
-const subscriptionProxyAddr = '0x20704825C30EC2411321A9771FDC2e9A39c38d6b';
-const subscriptionAddr = '0x76a185a4f66C0d09eBfbD916e0AD0f1CDF6B911b';
+const executorAddr = '0x4dbeC827905A64c15Abe3dDDfAf5A095F816b5eb';
+const subscriptionProxyAddr = '0xa5bc87AA4647B27E6695f78a5164bf65EcA87E77';
+const subscriptionAddr = '0x9eFe9d52e8Eb71C7FE14853b7bfD97eCEa0b2e40';
 
 const makerVersion = "1.0.6";
 
@@ -97,11 +97,15 @@ describe("Automation-MCD", () => {
         const mcdRatioTriggerData = encodeMcdRatioTriggerData(vaultId, minRatio, UNDER);
 
         const data = web3.eth.abi.encodeFunctionCall(getAbiFunction(SubscriptionProxy, 'subscribe'),
-        [[{id: web3.utils.keccak256('McdRatioTrigger'), data: mcdRatioTriggerData}],
-        [{id: web3.utils.keccak256('McdGenerate'), data: '0x0'}]]);
+        [
+            executorAddr,
+            subscriptionAddr,
+            [{id: web3.utils.keccak256('McdRatioTrigger'), data: mcdRatioTriggerData}],
+            [{id: web3.utils.keccak256('McdGenerate'), data: '0x0'}]
+        ]);
 
         await web3Proxy.methods['execute(address,bytes)']
-           (subscriptionProxyAddr, data).send({from: accounts[0], gas: 1000000});
+           (subscriptionProxyAddr, data).send({from: accounts[0], gas: 2000000});
 
         subId = (await subscriptions.getStreategyCount()).toString();
         console.log('Sub: ', subId);
