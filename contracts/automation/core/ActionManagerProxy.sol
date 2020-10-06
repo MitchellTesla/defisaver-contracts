@@ -9,30 +9,34 @@ import "../core/Registry.sol";
 import "./ActionExecutor.sol";
 
 /// @title Handle FL taking and calls action executor
-contract ActionManagerProxy is GeneralizedFLTaker, ProxyPermission {
+contract ActionManagerProxy
 
-    Registry public constant registry = Registry(0xD1E8EA7709e85b22B846fb6EB5a411a348279A8a);
+// is GeneralizedFLTaker, ProxyPermission
+
+{
+
+    Registry public constant registry = Registry(0x01c4038Ec528F6d7e5f8988863951Fb091eC4Ab2);
 
     /// @notice Checks and takes flash loan and calls Action Executor
     /// @param _actionIds All of the actionIds for the strategy
     /// @param _actionsCallData All input data needed to execute actions
     function manageActions(uint[] memory _actionIds, bytes[] memory _actionsCallData) public payable {
-        (uint flAmount, address flToken, uint8 flType) = checkFl(_actionIds[0], _actionsCallData[0]);
+        // (uint flAmount, address flToken, uint8 flType) = checkFl(_actionIds[0], _actionsCallData[0]);
 
-        address payable actionExecutorAddr = payable(registry.getAddr(keccak256("ActionExecutor")));
-        bytes memory encodedActions = abi.encode(_actionsCallData, _actionIds, address(this), flToken, flAmount);
+        // address payable actionExecutorAddr = payable(registry.getAddr(keccak256("ActionExecutor")));
+        // bytes memory encodedActions = abi.encode(_actionsCallData, _actionIds, address(this), flToken, flAmount);
 
-        givePermission(actionExecutorAddr);
+        // givePermission(actionExecutorAddr);
 
-        actionExecutorAddr.transfer(msg.value);
+        // actionExecutorAddr.transfer(msg.value);
 
-        if (flType != 0) {
-            takeLoan(actionExecutorAddr, flToken, flAmount, encodedActions, LoanType(flType));
-        } else {
-            ActionExecutor(actionExecutorAddr).executeOperation(address(0), 0, 0, encodedActions);
-        }
+        // if (flType != 0) {
+        //     takeLoan(actionExecutorAddr, flToken, flAmount, encodedActions, LoanType(flType));
+        // } else {
+        //     ActionExecutor(actionExecutorAddr).executeOperation(address(0), 0, 0, encodedActions);
+        // }
 
-        removePermission(actionExecutorAddr);
+        // removePermission(actionExecutorAddr);
     }
 
     /// @notice Checks if the first action is a FL and gets it's data

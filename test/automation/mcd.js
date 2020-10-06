@@ -26,6 +26,7 @@ const mcdEthJoin = '0x2F0b23f53734252Bda2277357e97e1517d6B042A';
 const DSProxy = contract.fromArtifact("DSProxy");
 const ProxyRegistryInterface = contract.fromArtifact("ProxyRegistryInterface");
 const MCDSaverProxy = contract.fromArtifact('MCDSaverProxy');
+const Registry = contract.fromArtifact('Registry');
 
 
 const GetCdps = contract.fromArtifact('GetCdps');
@@ -35,9 +36,10 @@ const Executor = contract.fromArtifact('Executor');
 const SubscriptionProxy = contract.fromArtifact('SubscriptionProxy');
 const Subscriptions = contract.fromArtifact('Subscriptions');
 
-const executorAddr = '0x4dbeC827905A64c15Abe3dDDfAf5A095F816b5eb';
+const executorAddr = '0x3060148ca5eedF61B794C1eaFb483595510049CF';
 const subscriptionProxyAddr = '0xa5bc87AA4647B27E6695f78a5164bf65EcA87E77';
-const subscriptionAddr = '0x9eFe9d52e8Eb71C7FE14853b7bfD97eCEa0b2e40';
+const subscriptionAddr = '0x7e930A7f5a4Dc8fB9B7f7cAd69BafE3E35014171';
+const registryAddr = '0x01c4038Ec528F6d7e5f8988863951Fb091eC4Ab2';
 
 const makerVersion = "1.0.6";
 
@@ -62,9 +64,16 @@ const encodeMcdGenerateAction = (vaultId, amount, joinAddr) => {
     return encodeActionParams;
 };
 
+const getRegistryAddr = async (web3, registry, name) => {
+    console.log(web3.utils.keccak256(name));
+    const addr = await registry.methods.getAddr(web3.utils.keccak256(name)).call();
+
+    return addr;
+}
+
 describe("Automation-MCD", () => {
     let registry, proxy, proxyAddr, makerAddresses,
-        web3LoanInfo, web3Exchange, collToken, boostAmount, borrowToken, repayAmount,
+        web3LoanInfo, web3Exchange, collToken, boostAmount, borrowToken,
         collAmount, borrowAmount, getCdps, subscriptions, executor, subId, vaultId;
 
     before(async () => {
@@ -83,9 +92,15 @@ describe("Automation-MCD", () => {
         subscriptions = await Subscriptions.at(subscriptionAddr);
         mcdSaverProxy = await MCDSaverProxy.at(mcdSaverProxyAddress);
         executor = new web3.eth.Contract(Executor.abi, executorAddr);
+        registry = new web3.eth.Contract(Registry.abi, registryAddr);
     });
 
     it('... should create and subscribe ETH vault', async () => {
+
+        // const addr = await getRegistryAddr(web3, registry,  'Subscriptions');
+
+        // console.log(addr);
+
         let ilk = 'ETH_A';
         vaultId = await createVault(ilk, web3.utils.toWei('2', 'ether'), web3.utils.toWei('350', 'ether'));
 
@@ -116,9 +131,9 @@ describe("Automation-MCD", () => {
 
         const amount = web3.utils.toWei('20', 'ether');
 
-        const triggerCallData = '0x0';
+        const triggerCallData = web3.eth.abi.encodeParameters(['uint256'], [0]);
         const actionCallData = encodeMcdGenerateAction(vaultId, amount, mcdEthJoin);
-        await executor.methods.executeStrategy(subId, [triggerCallData], [actionCallData]).send({
+        await executor.methods.executeStrategy(subId - 1, [triggerCallData], [actionCallData]).send({
             from: accounts[0], gas: 3000000
         });
     });

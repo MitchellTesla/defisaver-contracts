@@ -11,7 +11,7 @@ import "./Registry.sol";
 /// @title Main entry point for executing automated strategies
 contract Executor is StrategyData {
 
-    Registry public constant registry = Registry(0xD1E8EA7709e85b22B846fb6EB5a411a348279A8a);
+    Registry public constant registry = Registry(0x01c4038Ec528F6d7e5f8988863951Fb091eC4Ab2);
     // Subscriptions public constant subscriptions = Subscriptions(0x76a185a4f66C0d09eBfbD916e0AD0f1CDF6B911b);
 
     /// @notice Checks all the triggers and executes actions
@@ -30,13 +30,13 @@ contract Executor is StrategyData {
         require(strategy.active, "Strategy is not active");
 
         // check bot auth
-        // checkCallerAuth(_strategyId);
+        checkCallerAuth(_strategyId);
 
         // check if all the triggers are true
-        // checkTriggers(strategy, _triggerCallData, subscriptionsAddr);
+        checkTriggers(strategy, _triggerCallData, subscriptionsAddr);
 
-        // // execute actions
-        // callActions(strategy, _actionsCallData);
+        // execute actions
+        callActions(strategy, _actionsCallData);
     }
 
     /// @notice Checks if msg.sender has auth, reverts if not
@@ -68,7 +68,7 @@ contract Executor is StrategyData {
         DSProxyInterface(_strategy.proxy).execute{value: msg.value}(
             actionManagerProxyAddr,
             abi.encodeWithSignature(
-                "manageActions(uint[],bytes[])",
+                "manageActions(uint256[],bytes[])",
                 _strategy.actionIds,
                 _actionsCallData
         ));
