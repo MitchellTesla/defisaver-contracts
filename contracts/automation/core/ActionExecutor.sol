@@ -6,11 +6,12 @@ import "../../interfaces/TokenInterface.sol";
 import "../../savings/dydx/ISoloMargin.sol";
 import "../../flashloan/FlashLoanReceiverBase.sol";
 import "../core/Registry.sol";
+import "./Subscriptions.sol";
 
 /// @title Executes a series of actions by calling the users DSProxy
 contract ActionExecutor is FlashLoanReceiverBase {
 
-    Registry public constant registry = Registry(0x01c4038Ec528F6d7e5f8988863951Fb091eC4Ab2);
+    Registry public constant registry = Registry(0x2b9FfFb8C8606A4a417a97Bc2977167131c74fe6);
 
     address public constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
@@ -49,16 +50,16 @@ contract ActionExecutor is FlashLoanReceiverBase {
             responses[0] = bytes32(_loanAmount);
         }
 
-         for (; i < _actions.length; ++i) {
-            (bytes32 id, bytes memory data) = abi.decode(_actions[i], (bytes32, bytes));
+        Subscriptions sub = Subscriptions(registry.getAddr(keccak256("Subscriptions")));
 
-            address actionAddr = registry.getAddr(id);
+        for (; i < _actions.length; ++i) {
+            Subscriptions.Action memory action = sub.getAction(_actionIds[i]);
 
-            responses[i] = DSProxyInterface(_proxy).execute{value: address(this).balance}(actionAddr,
+            responses[i] = DSProxyInterface(_proxy).execute{value: address(this).balance}(registry.getAddr(action.id),
                 abi.encodeWithSignature(
                 "executeAction(uint256,bytes,bytes32[])",
                 _actionIds[i],
-                data,
+                _actions[i],
                 responses
             ));
         }

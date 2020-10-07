@@ -25,7 +25,7 @@ const C_ZRX_ADDRESS = '0xb3319f5d18bc0d84dd1b4825dcde5d5f7266d407';
 const saverExchangeAddress = "0xe97DbD7116D168190F8A6E7beB1092c103c53a12";
 const mcdSaverProxyAddress = "0xa292832ACF0b0226E378E216A982fA966eaA7EBc";
 
-const debugContractAddr = '0x59d3631c86BbE35EF041872d502F218A39FBa150';
+const debugContractAddr = '0x004C6D77c577aaC0F21F9cbDD9b26B1a0553feb6';
 
 const MAX_UINT = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
 
@@ -54,7 +54,7 @@ const wmul = (a, b) => {
 }
 
 const loadAccounts = (web3) => {
-    const account = web3.eth.accounts.privateKeyToAccount('0xad8485b62a2a1145fcfa49cd5fd11b5f59e50f1bcf5ad31f18ce5137b2bfcdb1');
+    const account = web3.eth.accounts.privateKeyToAccount('0x9f80186e8f40de0153dae0c8ac2f9777a6aae6f9d5abe416e814bbde5e7f6df2');
     web3.eth.accounts.wallet.add(account);
 
     return web3;

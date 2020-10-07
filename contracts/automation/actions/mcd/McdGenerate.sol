@@ -10,12 +10,16 @@ import "../../../interfaces/Jug.sol";
 import "../../../DS/DSMath.sol";
 import "../../../interfaces/ActionInterface.sol";
 
+import "../../../utils/DebugInfo.sol";
+
 contract McdGenerate is ActionInterface, DSMath, MCDSaverProxyHelper {
     address public constant MANAGER_ADDRESS = 0x5ef30b9986345249bc32d8928B7ee64DE9435E39;
     address public constant VAT_ADDRESS = 0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B;
     address public constant JUG_ADDRESS = 0x19c0976f590D67707E62397C87829d896Dc0f1F1;
     address public constant SPOTTER_ADDRESS = 0x65C79fcB50Ca1594B025960e539eD7A9a6D434A3;
+    address public constant DAI_JOIN_ADDRESS = 0x9759A6Ac90977b93B58547b4A71c78317f391A28;
 
+    DebugInfo public constant console = DebugInfo(0x004C6D77c577aaC0F21F9cbDD9b26B1a0553feb6);
 
     Manager public constant manager = Manager(MANAGER_ADDRESS);
     Vat public constant vat = Vat(VAT_ADDRESS);
@@ -30,11 +34,13 @@ contract McdGenerate is ActionInterface, DSMath, MCDSaverProxyHelper {
         uint rate = Jug(JUG_ADDRESS).drip(ilk);
         uint daiVatBalance = vat.dai(manager.urns(cdpId));
 
-        uint maxAmount = getMaxDebt(amount, ilk);
+        uint maxAmount = getMaxDebt(cdpId, ilk);
 
         if (amount >= maxAmount) {
             amount = maxAmount;
         }
+
+        console.logUint("amount", amount);
 
         manager.frob(cdpId, int(0), normalizeDrawAmount(amount, rate, daiVatBalance));
         manager.move(cdpId, address(this), toRad(amount));
@@ -43,7 +49,7 @@ contract McdGenerate is ActionInterface, DSMath, MCDSaverProxyHelper {
             vat.hope(joinAddr);
         }
 
-        DaiJoin(joinAddr).exit(address(this), amount);
+        DaiJoin(DAI_JOIN_ADDRESS).exit(address(this), amount);
 
         return bytes32(amount);
     }
@@ -80,7 +86,7 @@ contract McdGenerate is ActionInterface, DSMath, MCDSaverProxyHelper {
     /// @param _cdpId Id of the CDP
     /// @param _ilk Ilk of the CDP
     /// @dev Substracts 10 wei to aviod rounding error later on
-    function getMaxDebt(uint _cdpId, bytes32 _ilk) public virtual view returns (uint) {
+    function getMaxDebt(uint _cdpId, bytes32 _ilk) public view returns (uint) {
         uint price = getPrice(_ilk);
 
         (, uint mat) = spotter.ilks(_ilk);

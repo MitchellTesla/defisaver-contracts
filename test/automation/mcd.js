@@ -36,9 +36,9 @@ const Executor = contract.fromArtifact('Executor');
 const SubscriptionProxy = contract.fromArtifact('SubscriptionProxy');
 const Subscriptions = contract.fromArtifact('Subscriptions');
 
-const executorAddr = '0x3060148ca5eedF61B794C1eaFb483595510049CF';
-const subscriptionProxyAddr = '0xa5bc87AA4647B27E6695f78a5164bf65EcA87E77';
-const subscriptionAddr = '0x7e930A7f5a4Dc8fB9B7f7cAd69BafE3E35014171';
+const executorAddr = '0x7EA4ED6aE31213EB2C4b3FBEC85b09082Ddfa6D5';
+const subscriptionProxyAddr = '0x808554B05F7FB25E78c4e19672edBDb8f635EF70';
+const subscriptionAddr = '0xA740851b4f6595f51E4E188535c80175b78C9f2d';
 const registryAddr = '0x01c4038Ec528F6d7e5f8988863951Fb091eC4Ab2';
 
 const makerVersion = "1.0.6";
@@ -57,8 +57,8 @@ const encodeMcdRatioTriggerData = (vaultId, ratio, type) => {
 
 const encodeMcdGenerateAction = (vaultId, amount, joinAddr) => {
     const encodeActionParams = web3.eth.abi.encodeParameters(
-        ['uint256','uint256', 'address'],
-        [vaultId, amount, joinAddr]
+        ['uint256','uint256', 'address', 'uint8[]'],
+        [vaultId, amount, joinAddr, []]
     );
 
     return encodeActionParams;
@@ -101,8 +101,11 @@ describe("Automation-MCD", () => {
 
         // console.log(addr);
 
+        const ethBalance = await getBalance(web3, accounts[0], ETH_ADDRESS);
+        console.log(ethBalance.toString() / 1e18);
+
         let ilk = 'ETH_A';
-        vaultId = await createVault(ilk, web3.utils.toWei('2', 'ether'), web3.utils.toWei('350', 'ether'));
+        vaultId = await createVault(ilk, web3.utils.toWei('2', 'ether'), web3.utils.toWei('300', 'ether'));
 
         const ratio = await getRatio(vaultId);
         console.log('VaultId: ' + vaultId + ' Ratio: ', ratio);
@@ -132,10 +135,17 @@ describe("Automation-MCD", () => {
         const amount = web3.utils.toWei('20', 'ether');
 
         const triggerCallData = web3.eth.abi.encodeParameters(['uint256'], [0]);
+        console.log(vaultId, amount, mcdEthJoin);
         const actionCallData = encodeMcdGenerateAction(vaultId, amount, mcdEthJoin);
         await executor.methods.executeStrategy(subId - 1, [triggerCallData], [actionCallData]).send({
             from: accounts[0], gas: 3000000
         });
+
+        const afterRatio = await getRatio(vaultId);
+        console.log(afterRatio);
+
+        const t = await getDebugInfo("amount", "uint");
+        console.log(t.toString());
     });
 
 
@@ -162,8 +172,8 @@ describe("Automation-MCD", () => {
             [makerAddresses['CDP_MANAGER'], makerAddresses['MCD_JUG'], makerAddresses[`MCD_JOIN_${type}`], makerAddresses["MCD_JOIN_DAI"], ilk, _collAmount, daiAmount, true]);
         }
 
-    	await proxy.methods['execute(address,bytes)'](makerAddresses['PROXY_ACTIONS'], data, {
-            from: accounts[0], value});
+    	// await proxy.methods['execute(address,bytes)'](makerAddresses['PROXY_ACTIONS'], data, {
+        //     from: accounts[0], value, gas: 3000000});
 
         const cdpsAfter = await getCdps.getCdpsAsc(makerAddresses['CDP_MANAGER'], proxyAddr);
         return cdpsAfter.ids[cdpsAfter.ids.length - 1].toString()
@@ -172,6 +182,8 @@ describe("Automation-MCD", () => {
 
     const getRatio = async (vaultId) => {
         const vaultInfo = await mcdSaverProxy.getCdpDetailedInfo(vaultId.toString());
+
+        console.log(vaultInfo.debt.toString() / 1e18);
 
         const ratio = vaultInfo.collateral.mul(vaultInfo.price).div(vaultInfo.debt);
 

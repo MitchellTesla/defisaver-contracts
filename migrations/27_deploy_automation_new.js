@@ -16,6 +16,8 @@ const McdWithdraw = artifacts.require("./McdWithdraw.sol");
 
 const McdRatioTrigger = artifacts.require("./McdRatioTrigger.sol");
 
+const DebugInfo = artifacts.require("./DebugInfo.sol");
+
 module.exports = async (deployer, network, accounts) => {
     let deployAgain = (process.env.DEPLOY_AGAIN === 'true') ? true : false;
 
@@ -25,23 +27,25 @@ module.exports = async (deployer, network, accounts) => {
     // await deployer.deploy(Registry, {gas: 6720000, overwrite: deployAgain});
 
 
-    const registryAddr = '0x01c4038Ec528F6d7e5f8988863951Fb091eC4Ab2';
+    const registryAddr = '0x2b9FfFb8C8606A4a417a97Bc2977167131c74fe6';
 
     const registry = await Registry.at(registryAddr);
+
+    // await deployer.deploy(DebugInfo, {gas: 6720000, overwrite: deployAgain});
 
     // await deployer.deploy(SubscriptionProxy, {gas: 6720000, overwrite: deployAgain});
     // const subscriptionProxyAddress = (await SubscriptionProxy.deployed()).address;
     // console.log("subscriptionProxyAddress: ", subscriptionProxyAddress);
 
 
-    await deployer.deploy(Executor, {gas: 6720000, overwrite: deployAgain});
+    // await deployer.deploy(Executor, {gas: 6720000, overwrite: deployAgain});
     // await deployer.deploy(Subscriptions, {gas: 6720000, overwrite: deployAgain});
 
     // await deployer.deploy(BotAuth, {gas: 6720000, overwrite: deployAgain});
     // await deployer.deploy(ActionManagerProxy, {gas: 6720000, overwrite: deployAgain});
     // await deployer.deploy(ActionExecutor, {gas: 6720000, overwrite: deployAgain});
 
-    // await deployer.deploy(McdGenerate, {gas: 6720000, overwrite: deployAgain});
+    await deployer.deploy(McdGenerate, {gas: 6720000, overwrite: deployAgain});
     // await deployer.deploy(McdPayback, {gas: 6720000, overwrite: deployAgain});
     // await deployer.deploy(McdSupply, {gas: 6720000, overwrite: deployAgain});
     // await deployer.deploy(McdWithdraw, {gas: 6720000, overwrite: deployAgain});
@@ -57,13 +61,13 @@ module.exports = async (deployer, network, accounts) => {
     // await registry.addNewContract(web3.utils.keccak256('Subscriptions'), subscriptionsAddress, 0);
 
     // const actionManagerProxyAddress = (await ActionManagerProxy.deployed()).address;
-    // await registry.changeInsant(web3.utils.keccak256('ActionManagerProxy'), actionManagerProxyAddress);
+    // await registry.addNewContract(web3.utils.keccak256('ActionManagerProxy'), actionManagerProxyAddress, 0);
 
     // const actionExecutorAddress = (await ActionExecutor.deployed()).address;
-    // await registry.addNewContract(web3.utils.keccak256('ActionExecutor'), actionExecutorAddress, 0);
+    // await registry.changeInsant(web3.utils.keccak256('ActionExecutor'), actionExecutorAddress);
 
-    // const mcdGenerateAddress = (await McdGenerate.deployed()).address;
-    // await registry.addNewContract(web3.utils.keccak256('McdGenerate'), mcdGenerateAddress, 0);
+    const mcdGenerateAddress = (await McdGenerate.deployed()).address;
+    await registry.changeInsant(web3.utils.keccak256('McdGenerate'), mcdGenerateAddress);
 
     // const mcdPaybackAddress = (await McdPayback.deployed()).address;
     // await registry.addNewContract(web3.utils.keccak256('McdPayback'), mcdPaybackAddress, 0);
@@ -78,6 +82,6 @@ module.exports = async (deployer, network, accounts) => {
     // await registry.addNewContract(web3.utils.keccak256('McdRatioTrigger'), mcdRatioTriggerAddress, 0);
 
     // console.log("subscription: ", (await Subscriptions.deployed()).address);
-    console.log("executor: ", (await Executor.deployed()).address);
+    // console.log("executor: ", (await Executor.deployed()).address);
 
 };
