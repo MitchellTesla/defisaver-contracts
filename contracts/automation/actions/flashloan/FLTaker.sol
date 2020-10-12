@@ -32,7 +32,7 @@ contract FLTaker is FLActionInterface {
     }
 
     function actionType() override public returns (uint8) {
-        return 0;
+        return uint8(ActionType.FL_ACTION);
     }
 
 }

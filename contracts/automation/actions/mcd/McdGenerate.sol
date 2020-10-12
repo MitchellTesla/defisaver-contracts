@@ -19,7 +19,7 @@ contract McdGenerate is ActionInterface, DSMath, MCDSaverProxyHelper {
     address public constant SPOTTER_ADDRESS = 0x65C79fcB50Ca1594B025960e539eD7A9a6D434A3;
     address public constant DAI_JOIN_ADDRESS = 0x9759A6Ac90977b93B58547b4A71c78317f391A28;
 
-    DebugInfo public constant console = DebugInfo(0x004C6D77c577aaC0F21F9cbDD9b26B1a0553feb6);
+    // DebugInfo public constant console = DebugInfo(0x004C6D77c577aaC0F21F9cbDD9b26B1a0553feb6);
 
     Manager public constant manager = Manager(MANAGER_ADDRESS);
     Vat public constant vat = Vat(VAT_ADDRESS);
@@ -40,8 +40,6 @@ contract McdGenerate is ActionInterface, DSMath, MCDSaverProxyHelper {
             amount = maxAmount;
         }
 
-        console.logUint("amount", amount);
-
         manager.frob(cdpId, int(0), normalizeDrawAmount(amount, rate, daiVatBalance));
         manager.move(cdpId, address(this), toRad(amount));
 
@@ -55,7 +53,11 @@ contract McdGenerate is ActionInterface, DSMath, MCDSaverProxyHelper {
     }
 
     function actionType() override public returns (uint8) {
-        return 1;
+        return uint8(ActionType.STANDARD_ACTION);
+    }
+
+    function parseSubData(bytes memory _data) public pure {
+
     }
 
     function parseParamData(

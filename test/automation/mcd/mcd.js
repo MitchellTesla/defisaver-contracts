@@ -19,7 +19,7 @@ const {
     WETH_ADDRESS,
     nullAddress,
     getDebugInfo,
-} = require('../helper.js');
+} = require('../../helper.js');
 
 const mcdEthJoin = '0x2F0b23f53734252Bda2277357e97e1517d6B042A';
 
@@ -35,6 +35,7 @@ const DSSProxyActions = contract.fromArtifact('DssProxyActions');
 const Executor = contract.fromArtifact('Executor');
 const SubscriptionProxy = contract.fromArtifact('SubscriptionProxy');
 const Subscriptions = contract.fromArtifact('Subscriptions');
+const ActionsManagerProxy = contract.fromArtifact('ActionsManagerProxy');
 
 const executorAddr = '0x7EA4ED6aE31213EB2C4b3FBEC85b09082Ddfa6D5';
 const subscriptionProxyAddr = '0x808554B05F7FB25E78c4e19672edBDb8f635EF70';
@@ -132,6 +133,24 @@ describe("Automation-MCD", () => {
 
     it('... should execute a strategy', async () => {
 
+        const amount = web3.utils.toWei('20', 'ether');
+
+        const triggerCallData = web3.eth.abi.encodeParameters(['uint256'], [0]);
+        console.log(vaultId, amount, mcdEthJoin);
+        const actionCallData = encodeMcdGenerateAction(vaultId, amount, mcdEthJoin);
+        await executor.methods.executeStrategy(subId - 1, [triggerCallData], [actionCallData]).send({
+            from: accounts[0], gas: 3000000
+        });
+
+        const afterRatio = await getRatio(vaultId);
+        console.log(afterRatio);
+
+        const t = await getDebugInfo("amount", "uint");
+        console.log(t.toString());
+    });
+
+    // in order to save gas single actions are called directly through dsproxy
+    it('... should execute a direct generate call', async () => {
         const amount = web3.utils.toWei('20', 'ether');
 
         const triggerCallData = web3.eth.abi.encodeParameters(['uint256'], [0]);
