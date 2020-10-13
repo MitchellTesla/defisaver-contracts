@@ -27,6 +27,7 @@ const DSProxy = contract.fromArtifact("DSProxy");
 const ProxyRegistryInterface = contract.fromArtifact("ProxyRegistryInterface");
 const MCDSaverProxy = contract.fromArtifact('MCDSaverProxy');
 const Registry = contract.fromArtifact('Registry');
+const ActionInterface = contract.fromArtifact('ActionInterface');
 
 
 const GetCdps = contract.fromArtifact('GetCdps');
@@ -37,29 +38,15 @@ const SubscriptionProxy = contract.fromArtifact('SubscriptionProxy');
 const Subscriptions = contract.fromArtifact('Subscriptions');
 const ActionManagerProxy = contract.fromArtifact('ActionManagerProxy');
 
-const executorAddr = '0x7Deb0e992A78a9394e15B6A48888605b0889d1B0';
-const subscriptionProxyAddr = '0xf237A0FEddfE929B1fD912a52aD6021E48e97e87';
-const subscriptionAddr = '0x5CDBE108c98001C0487071381b242F7180a6a0b9';
 const registryAddr = '0xC9d3ebD0eE06564Ef70326e954F86BDcfaeEF678';
+
 
 const makerVersion = "1.0.6";
 
-const OVER = 0;
-const UNDER = 1;
-
-const encodeMcdRatioTriggerData = (vaultId, ratio, type) => {
-    const encodeTriggerParams = web3.eth.abi.encodeParameters(
-        ['uint256','uint256', 'uint8'],
-        [vaultId, ratio, type]
-    );
-
-    return encodeTriggerParams;
-};
-
-const encodeMcdGenerateAction = (vaultId, amount) => {
+const encodeMcdWithdrawAction = (vaultId, amount, joinAddr) => {
     const encodeActionParams = web3.eth.abi.encodeParameters(
-        ['uint256','uint256', 'uint8[]'],
-        [vaultId, amount, []]
+        ['uint256','uint256', 'address', 'uint8[]'],
+        [vaultId, amount, joinAddr, []]
     );
 
     return encodeActionParams;
@@ -72,8 +59,8 @@ const getRegistryAddr = async (web3, registry, name) => {
     return addr;
 }
 
-describe("Automation-MCD", () => {
-    let registry, proxyRegistry, proxy, proxyAddr, makerAddresses,
+describe("MCD-Withdraw", () => {
+    let registry, proxy, proxyAddr, makerAddresses, proxyRegistry,
         web3LoanInfo, web3Exchange, collToken, boostAmount, borrowToken,
         collAmount, borrowAmount, getCdps, subscriptions, executor, subId, vaultId;
 
@@ -84,71 +71,55 @@ describe("Automation-MCD", () => {
         accounts = getAccounts(web3);
 
         proxyRegistry = await ProxyRegistryInterface.at(makerAddresses["PROXY_REGISTRY"]);
+        registry = new web3.eth.Contract(Registry.abi, registryAddr);
 
         const proxyInfo = await getProxy(proxyRegistry, accounts[0]);
         proxy = proxyInfo.proxy;
         proxyAddr = proxyInfo.proxyAddr;
         web3Proxy = new web3.eth.Contract(DSProxy.abi, proxyAddr);
         getCdps = await GetCdps.at(makerAddresses["GET_CDPS"]);
-        subscriptions = await Subscriptions.at(subscriptionAddr);
         mcdSaverProxy = await MCDSaverProxy.at(mcdSaverProxyAddress);
-        executor = new web3.eth.Contract(Executor.abi, executorAddr);
-        registry = new web3.eth.Contract(Registry.abi, registryAddr);
     });
 
+    const getRegistryAddr = async (web3, registry, name) => {
+        const addr = await registry.methods.getAddr(web3.utils.keccak256(name)).call();
+
+        return addr;
+    };
+
     it('... should create and subscribe ETH vault', async () => {
+        const ilk = 'ETH_A';
+        const collAmount = web3.utils.toWei('2', 'ether');
+        const debtAmount =  web3.utils.toWei('300', 'ether');
 
-        // const addr = await getRegistryAddr(web3, registry,  'Subscriptions');
-
-        // console.log(addr);
-
-        const ethBalance = await getBalance(web3, accounts[0], ETH_ADDRESS);
-        console.log(ethBalance.toString() / 1e18);
-
-        let ilk = 'ETH_A';
-        vaultId = await createVault(ilk, web3.utils.toWei('2', 'ether'), web3.utils.toWei('300', 'ether'));
+        vaultId = await createVault(ilk, collAmount, debtAmount);
 
         const ratio = await getRatio(vaultId);
         console.log('VaultId: ' + vaultId + ' Ratio: ', ratio);
+    });
 
-        const minRatio = '2500000000000000000';
+    it('... should execute a direct withdraw call', async () => {
+        const amount = web3.utils.toWei('0.1', 'ether');
+        const generateAddr = await getRegistryAddr(web3, registry, 'McdWithdraw');
 
-        const mcdRatioTriggerData = encodeMcdRatioTriggerData(vaultId, minRatio, UNDER);
+        const callData = encodeMcdWithdrawAction(vaultId, amount, mcdEthJoin);
 
-        const data = web3.eth.abi.encodeFunctionCall(getAbiFunction(SubscriptionProxy, 'subscribe'),
-        [
-            executorAddr,
-            subscriptionAddr,
-            [{id: web3.utils.keccak256('McdRatioTrigger'), data: mcdRatioTriggerData}],
-            [{id: web3.utils.keccak256('McdGenerate'), data: '0x0'}]
-        ]);
+        const vaultInfo = await mcdSaverProxy.getCdpDetailedInfo(vaultId.toString());
+        const collBefore = vaultInfo.collateral / 1e18;
+
+        const data = web3.eth.abi.encodeFunctionCall(getAbiFunction(ActionInterface, 'executeAction'),
+        [0, callData, []]);
 
         await web3Proxy.methods['execute(address,bytes)']
-           (subscriptionProxyAddr, data).send({from: accounts[0], gas: 2000000});
+           (generateAddr, data).send({from: accounts[0], gas: 2000000});
 
-        subId = (await subscriptions.getStreategyCount()).toString();
-        console.log('Sub: ', subId);
+        const vaultInfoAfter = await mcdSaverProxy.getCdpDetailedInfo(vaultId.toString());
+        const collAfter = vaultInfoAfter.collateral / 1e18;
 
+        console.log(`Eth before ${collBefore}, Eth after ${collAfter}`);
+
+        expect(collBefore).to.be.gt(collAfter);
     });
-
-    it('... should execute a strategy', async () => {
-
-        const amount = web3.utils.toWei('20', 'ether');
-
-        const triggerCallData = web3.eth.abi.encodeParameters(['uint256'], [0]);
-        console.log(vaultId, amount);
-        const actionCallData = encodeMcdGenerateAction(vaultId, amount);
-        await executor.methods.executeStrategy(subId - 1, [triggerCallData], [actionCallData]).send({
-            from: accounts[0], gas: 3000000
-        });
-
-        const afterRatio = await getRatio(vaultId);
-        console.log(afterRatio);
-
-        const t = await getDebugInfo("amount", "uint");
-        console.log(t.toString());
-    });
-
 
     const createVault = async (type, _collAmount, _daiAmount) => {
 

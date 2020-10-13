@@ -15,8 +15,6 @@ contract McdWithdraw is ActionInterface, DSMath {
     Manager public constant manager = Manager(MANAGER_ADDRESS);
     Vat public constant vat = Vat(VAT_ADDRESS);
 
-    // TODO: where is the money supplied comming from, (DSProxy/User)?
-
     function executeAction(uint _actionId, bytes memory _callData, bytes32[] memory _returnValues) override public returns (bytes32) {
         (uint cdpId, uint amount, address joinAddr) = parseParamData(_callData, _returnValues);
 

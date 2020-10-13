@@ -13,7 +13,7 @@ import "./Subscriptions.sol";
 /// @title Handle FL taking and calls action executor
 contract ActionManagerProxy is GeneralizedFLTaker, ProxyPermission {
 
-    Registry public constant registry = Registry(0x2b9FfFb8C8606A4a417a97Bc2977167131c74fe6);
+    Registry public constant registry = Registry(0xC9d3ebD0eE06564Ef70326e954F86BDcfaeEF678);
 
     /// @notice Checks and takes flash loan and calls Action Executor
     /// @param _actionIds All of the actionIds for the strategy
