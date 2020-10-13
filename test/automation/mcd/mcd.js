@@ -35,12 +35,12 @@ const DSSProxyActions = contract.fromArtifact('DssProxyActions');
 const Executor = contract.fromArtifact('Executor');
 const SubscriptionProxy = contract.fromArtifact('SubscriptionProxy');
 const Subscriptions = contract.fromArtifact('Subscriptions');
-const ActionsManagerProxy = contract.fromArtifact('ActionsManagerProxy');
+const ActionManagerProxy = contract.fromArtifact('ActionManagerProxy');
 
 const executorAddr = '0x7EA4ED6aE31213EB2C4b3FBEC85b09082Ddfa6D5';
 const subscriptionProxyAddr = '0x808554B05F7FB25E78c4e19672edBDb8f635EF70';
 const subscriptionAddr = '0xA740851b4f6595f51E4E188535c80175b78C9f2d';
-const registryAddr = '0x01c4038Ec528F6d7e5f8988863951Fb091eC4Ab2';
+const registryAddr = '0x2b9FfFb8C8606A4a417a97Bc2977167131c74fe6';
 
 const makerVersion = "1.0.6";
 
@@ -56,10 +56,10 @@ const encodeMcdRatioTriggerData = (vaultId, ratio, type) => {
     return encodeTriggerParams;
 };
 
-const encodeMcdGenerateAction = (vaultId, amount, joinAddr) => {
+const encodeMcdGenerateAction = (vaultId, amount) => {
     const encodeActionParams = web3.eth.abi.encodeParameters(
-        ['uint256','uint256', 'address', 'uint8[]'],
-        [vaultId, amount, joinAddr, []]
+        ['uint256','uint256', 'uint8[]'],
+        [vaultId, amount, []]
     );
 
     return encodeActionParams;
@@ -82,8 +82,6 @@ describe("Automation-MCD", () => {
 
         web3 = loadAccounts(web3);
         accounts = getAccounts(web3);
-
-        registry = await ProxyRegistryInterface.at(makerAddresses["PROXY_REGISTRY"]);
 
         const proxyInfo = await getProxy(registry, accounts[0]);
         proxy = proxyInfo.proxy;
@@ -136,26 +134,8 @@ describe("Automation-MCD", () => {
         const amount = web3.utils.toWei('20', 'ether');
 
         const triggerCallData = web3.eth.abi.encodeParameters(['uint256'], [0]);
-        console.log(vaultId, amount, mcdEthJoin);
-        const actionCallData = encodeMcdGenerateAction(vaultId, amount, mcdEthJoin);
-        await executor.methods.executeStrategy(subId - 1, [triggerCallData], [actionCallData]).send({
-            from: accounts[0], gas: 3000000
-        });
-
-        const afterRatio = await getRatio(vaultId);
-        console.log(afterRatio);
-
-        const t = await getDebugInfo("amount", "uint");
-        console.log(t.toString());
-    });
-
-    // in order to save gas single actions are called directly through dsproxy
-    it('... should execute a direct generate call', async () => {
-        const amount = web3.utils.toWei('20', 'ether');
-
-        const triggerCallData = web3.eth.abi.encodeParameters(['uint256'], [0]);
-        console.log(vaultId, amount, mcdEthJoin);
-        const actionCallData = encodeMcdGenerateAction(vaultId, amount, mcdEthJoin);
+        console.log(vaultId, amount);
+        const actionCallData = encodeMcdGenerateAction(vaultId, amount);
         await executor.methods.executeStrategy(subId - 1, [triggerCallData], [actionCallData]).send({
             from: accounts[0], gas: 3000000
         });
@@ -191,8 +171,8 @@ describe("Automation-MCD", () => {
             [makerAddresses['CDP_MANAGER'], makerAddresses['MCD_JUG'], makerAddresses[`MCD_JOIN_${type}`], makerAddresses["MCD_JOIN_DAI"], ilk, _collAmount, daiAmount, true]);
         }
 
-    	// await proxy.methods['execute(address,bytes)'](makerAddresses['PROXY_ACTIONS'], data, {
-        //     from: accounts[0], value, gas: 3000000});
+    	await proxy.methods['execute(address,bytes)'](makerAddresses['PROXY_ACTIONS'], data, {
+            from: accounts[0], value, gas: 3000000});
 
         const cdpsAfter = await getCdps.getCdpsAsc(makerAddresses['CDP_MANAGER'], proxyAddr);
         return cdpsAfter.ids[cdpsAfter.ids.length - 1].toString()

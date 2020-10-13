@@ -1,6 +1,9 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
+import "../../core/Subscriptions.sol";
+import "../../core/Registry.sol";
+
 import "../../../mcd/saver/McdSaverProxyHelper.sol";
 import "../../../interfaces/Manager.sol";
 import "../../../interfaces/Spotter.sol";
@@ -25,9 +28,11 @@ contract McdGenerate is ActionInterface, DSMath, MCDSaverProxyHelper {
     Vat public constant vat = Vat(VAT_ADDRESS);
     Spotter public constant spotter = Spotter(SPOTTER_ADDRESS);
 
-    function executeAction(uint _actionId, bytes memory _callData, bytes32[] memory _returnValues) override public returns (bytes32) {
+    Registry public constant registry = Registry(0x2b9FfFb8C8606A4a417a97Bc2977167131c74fe6);
 
-        (uint cdpId, uint amount, address joinAddr) = parseParamData(_callData, _returnValues);
+    function executeAction(uint _actionId, bytes memory _callData, bytes32[] memory _returnValues) override public returns (bytes32) {
+        (uint cdpId, uint amount) = parseParamData(_callData, _returnValues);
+        // (cdpId, amount) = parseSubData(_actionId);
 
         bytes32 ilk = manager.ilks(cdpId);
 
@@ -43,8 +48,8 @@ contract McdGenerate is ActionInterface, DSMath, MCDSaverProxyHelper {
         manager.frob(cdpId, int(0), normalizeDrawAmount(amount, rate, daiVatBalance));
         manager.move(cdpId, address(this), toRad(amount));
 
-        if (vat.can(address(this), address(joinAddr)) == 0) {
-            vat.hope(joinAddr);
+        if (vat.can(address(this), address(DAI_JOIN_ADDRESS)) == 0) {
+            vat.hope(DAI_JOIN_ADDRESS);
         }
 
         DaiJoin(DAI_JOIN_ADDRESS).exit(address(this), amount);
@@ -56,17 +61,25 @@ contract McdGenerate is ActionInterface, DSMath, MCDSaverProxyHelper {
         return uint8(ActionType.STANDARD_ACTION);
     }
 
-    function parseSubData(bytes memory _data) public pure {
+    function parseSubData(uint _actionId) public view returns (uint cdpId, uint amount) {
+        if (_actionId != 0) {
+            Subscriptions sub = Subscriptions(registry.getAddr(keccak256("Subscriptions")));
+
+            Subscriptions.Action memory action = sub.getAction(_actionId);
+            if (action.id != "") {
+                (cdpId, amount) = abi.decode(action.data, (uint256,uint256));
+            }
+        }
 
     }
 
     function parseParamData(
         bytes memory _data,
         bytes32[] memory _returnValues
-    ) public pure returns (uint cdpId, uint amount, address joinAddr) {
+    ) public pure returns (uint cdpId, uint amount) {
         uint8[] memory inputMapping;
 
-        (cdpId, amount, joinAddr, inputMapping) = abi.decode(_data, (uint256,uint256,address,uint8[]));
+        (cdpId, amount, inputMapping) = abi.decode(_data, (uint256,uint256,uint8[]));
 
         // mapping return values to new inputs
         if (inputMapping.length > 0 && _returnValues.length > 0) {
@@ -77,8 +90,6 @@ contract McdGenerate is ActionInterface, DSMath, MCDSaverProxyHelper {
                     cdpId = uint(returnValue);
                 } else if (inputMapping[i] == 1) {
                     amount = uint(returnValue);
-                } else if (inputMapping[i] == 2) {
-                    joinAddr = address(bytes20(returnValue));
                 }
             }
         }

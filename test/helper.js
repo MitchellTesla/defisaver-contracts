@@ -1,6 +1,8 @@
 let { contract } = require('@openzeppelin/test-environment');
 const DSProxy = contract.fromArtifact("DSProxy");
 const DebugInfo = contract.fromArtifact("DebugInfo");
+const DSSProxyActions = contract.fromArtifact('DssProxyActions');
+
 const axios = require('axios');
 const Dec = require('decimal.js');
 
@@ -150,10 +152,7 @@ const getDebugInfo = async (id, type) => {
     } else if (type === 'bytes32') {
         return (await debugContract.bytes32Values(id));
     }
-
-
-
-}
+};
 
 module.exports = {
     getAbiFunction,

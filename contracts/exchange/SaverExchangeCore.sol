@@ -13,7 +13,7 @@ contract SaverExchangeCore is SaverExchangeHelper, DSMath {
     // first is empty to keep the legacy order in place
     enum ExchangeType { _, OASIS, KYBER, UNISWAP, ZEROX }
 
-    enum ActionType { SELL, BUY }
+    enum ExchangeActionType { SELL, BUY }
 
     struct ExchangeData {
         address srcAddr;
@@ -49,7 +49,7 @@ contract SaverExchangeCore is SaverExchangeHelper, DSMath {
             approve0xProxy(exData.srcAddr, exData.srcAmount);
 
             uint ethAmount = exData.srcAddr == WETH_ADDRESS ? msg.value - exData.srcAmount : msg.value;
-            (success, swapedTokens, tokensLeft) = takeOrder(exData, ethAmount, ActionType.SELL);
+            (success, swapedTokens, tokensLeft) = takeOrder(exData, ethAmount, ExchangeActionType.SELL);
 
             if (success) {
                 wrapper = exData.exchangeAddr;
@@ -58,7 +58,7 @@ contract SaverExchangeCore is SaverExchangeHelper, DSMath {
 
         // fallback to desired wrapper if 0x failed
         if (!success) {
-            swapedTokens = saverSwap(exData, ActionType.SELL);
+            swapedTokens = saverSwap(exData, ExchangeActionType.SELL);
             wrapper = exData.wrapper;
         }
 
@@ -96,7 +96,7 @@ contract SaverExchangeCore is SaverExchangeHelper, DSMath {
             approve0xProxy(exData.srcAddr, exData.srcAmount);
 
             uint ethAmount = exData.srcAddr == WETH_ADDRESS ? msg.value - exData.srcAmount : msg.value;
-            (success, swapedTokens,) = takeOrder(exData, ethAmount, ActionType.BUY);
+            (success, swapedTokens,) = takeOrder(exData, ethAmount, ExchangeActionType.BUY);
 
             if (success) {
                 wrapper = exData.exchangeAddr;
@@ -105,7 +105,7 @@ contract SaverExchangeCore is SaverExchangeHelper, DSMath {
 
         // fallback to desired wrapper if 0x failed
         if (!success) {
-            swapedTokens = saverSwap(exData, ActionType.BUY);
+            swapedTokens = saverSwap(exData, ExchangeActionType.BUY);
             wrapper = exData.wrapper;
         }
 
@@ -127,11 +127,11 @@ contract SaverExchangeCore is SaverExchangeHelper, DSMath {
     function takeOrder(
         ExchangeData memory _exData,
         uint256 _ethAmount,
-        ActionType _type
+        ExchangeActionType _type
     ) private returns (bool success, uint256, uint256) {
 
         // write in the exact amount we are selling/buing in an order
-        if (_type == ActionType.SELL) {
+        if (_type == ExchangeActionType.SELL) {
             writeUint256(_exData.callData, 36, _exData.srcAmount);
         } else {
             writeUint256(_exData.callData, 36, _exData.destAmount);
@@ -172,14 +172,14 @@ contract SaverExchangeCore is SaverExchangeHelper, DSMath {
     /// @param _exData Exchange data struct
     /// @param _type Type of action SELL|BUY
     /// @return swapedTokens For Sell that the destAmount, for Buy thats the srcAmount
-    function saverSwap(ExchangeData memory _exData, ActionType _type) internal returns (uint swapedTokens) {
+    function saverSwap(ExchangeData memory _exData, ExchangeActionType _type) internal returns (uint swapedTokens) {
         require(SaverExchangeRegistry(SAVER_EXCHANGE_REGISTRY).isWrapper(_exData.wrapper), "Wrapper is not valid");
 
         uint ethValue = 0;
 
         ERC20(_exData.srcAddr).safeTransfer(_exData.wrapper, _exData.srcAmount);
 
-        if (_type == ActionType.SELL) {
+        if (_type == ExchangeActionType.SELL) {
             swapedTokens = ExchangeInterfaceV2(_exData.wrapper).
                     sell{value: ethValue}(_exData.srcAddr, _exData.destAddr, _exData.srcAmount);
         } else {
