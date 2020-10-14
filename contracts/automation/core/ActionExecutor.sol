@@ -11,7 +11,7 @@ import "./Subscriptions.sol";
 /// @title Executes a series of actions by calling the users DSProxy
 contract ActionExecutor is FlashLoanReceiverBase {
 
-    Registry public constant registry = Registry(0x91ef8Fb063EB7e2aF38AB69b449f992cbE287C94);
+    Registry public constant registry = Registry(0xf20Fa06314385df317D1eF374a944A7e29CCfd89);
 
     address public constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
@@ -53,9 +53,16 @@ contract ActionExecutor is FlashLoanReceiverBase {
         Subscriptions sub = Subscriptions(registry.getAddr(keccak256("Subscriptions")));
 
         for (; i < _actions.length; ++i) {
-            Subscriptions.Action memory action = sub.getAction(_actionIds[i]);
+            bytes32 id;
 
-            responses[i] = DSProxyInterface(_proxy).execute{value: address(this).balance}(registry.getAddr(action.id),
+            if (_actionIds[i] != 0) {
+                id = sub.getAction(_actionIds[i]).id;
+            } else {
+                (id, _actions[i]) = abi.decode(_actions[i], (bytes32, bytes));
+
+            }
+
+            responses[i] = DSProxyInterface(_proxy).execute{value: address(this).balance}(registry.getAddr(id),
                 abi.encodeWithSignature(
                 "executeAction(uint256,bytes,bytes32[])",
                 _actionIds[i],

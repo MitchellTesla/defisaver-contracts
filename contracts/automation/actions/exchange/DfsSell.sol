@@ -7,9 +7,13 @@ import "../../../interfaces/ActionInterface.sol";
 contract DfsSell is ActionInterface, SaverExchangeCore {
 
     function executeAction(uint _actionId, bytes memory _callData, bytes32[] memory _returnValues) override public payable returns (bytes32) {
-        ExchangeData memory exchangeData = parseParamData(_callData, _returnValues);
+        (ExchangeData memory exchangeData, address from, address to) = parseParamData(_callData, _returnValues);
+
+        pullTokens(exchangeData.srcAddr, from, exchangeData.srcAmount);
 
         (, uint exchangedAmount) = _sell(exchangeData);
+
+        withdrawTokens(exchangeData.destAddr, payable(to), exchangedAmount);
 
         return bytes32(exchangedAmount);
     }
@@ -18,14 +22,28 @@ contract DfsSell is ActionInterface, SaverExchangeCore {
         return uint8(ActionType.STANDARD_ACTION);
     }
 
+    function pullTokens(address _token, address _from, uint _amount) internal {
+        if (_from != address(0) && _token != KYBER_ETH_ADDRESS) {
+            ERC20(_token).safeTransferFrom(_from, address(this), _amount);
+        }
+    }
+
+    function withdrawTokens(address _token, address payable _to, uint _amount) internal {
+        if (_to != address(0) && _token != KYBER_ETH_ADDRESS) {
+            ERC20(_token).safeTransfer(_to, _amount);
+        } else {
+            _to.transfer(_amount);
+        }
+    }
+
     function parseParamData(
         bytes memory _data,
         bytes32[] memory _returnValues
-    ) public pure returns (ExchangeData memory exchangeData) {
+    ) public pure returns (ExchangeData memory exchangeData, address from, address to) {
         uint8[] memory inputMapping;
         bytes memory exData;
 
-        (exData, inputMapping) = abi.decode(_data, (bytes, uint8[]));
+        (exData, from, to, inputMapping) = abi.decode(_data, (bytes,address,address,uint8[]));
 
         exchangeData = unpackExchangeData(exData);
 
@@ -40,6 +58,8 @@ contract DfsSell is ActionInterface, SaverExchangeCore {
                     exchangeData.destAddr = address(bytes20(returnValue));
                 } else if (inputMapping[i] == 2) {
                     exchangeData.srcAmount = uint(returnValue);
+                } else if (inputMapping[i] == 3) {
+                    from = address(bytes20(returnValue));
                 }
             }
         }

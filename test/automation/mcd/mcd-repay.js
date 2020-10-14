@@ -39,14 +39,16 @@ const Subscriptions = contract.fromArtifact('Subscriptions');
 const ActionManagerProxy = contract.fromArtifact('ActionManagerProxy');
 
 const registryAddr = '0xf20Fa06314385df317D1eF374a944A7e29CCfd89';
+const wrapperAddress = '0x3Ba0319533C578527aE69BF7fA2D289F20B9B55c';
 
 
 const makerVersion = "1.0.6";
 
-const encodeMcdGenerateAction = (vaultId, amount) => {
+const encodeMcdSupplyAction = (vaultId, amount, joinAddr, from) => {
+
     const encodeActionParams = web3.eth.abi.encodeParameters(
-        ['uint256','uint256', 'uint8[]'],
-        [vaultId, amount, []]
+        ['bytes32', 'uint256','uint256', 'address', 'address', 'uint8[]'],
+        [web3.utils.keccak256('McdSupply'), vaultId, amount, joinAddr, from, []]
     );
 
     return encodeActionParams;
@@ -59,7 +61,50 @@ const getRegistryAddr = async (web3, registry, name) => {
     return addr;
 }
 
-describe("MCD-Generate", () => {
+const encodeMcdWithdrawAction = (vaultId, amount, joinAddr) => {
+    const callDataParams = web3.eth.abi.encodeParameters(
+        ['uint256','uint256', 'address', 'uint8[]'],
+        [ vaultId, amount, joinAddr, []]
+    );
+
+    const encodeActionParams = web3.eth.abi.encodeParameters(
+        ['bytes32', 'bytes'],
+        [web3.utils.keccak256('McdWithdraw'), callDataParams]
+    );
+
+    return encodeActionParams;
+};
+
+const encodeDfsSellAction = (fromToken, toToken, amount) => {
+    const encodeExchangeParams1 = web3.eth.abi.encodeParameters(
+        ['address', 'address', 'uint256', 'uint256'],
+        [fromToken, toToken, amount, 0]
+    );
+
+    const encodeExchangeParams2 = web3.eth.abi.encodeParameters(
+        ['uint256', 'address', 'address', 'bytes', 'uint256'],
+        [0, wrapperAddress, nullAddress, "0x0", 0]
+    );
+
+    const encodeExchangeParams = web3.eth.abi.encodeParameters(
+        ['bytes', 'bytes'],
+        [encodeExchangeParams1, encodeExchangeParams2]
+    );
+
+    const encodeActionParams = web3.eth.abi.encodeParameters(
+        ['bytes', 'address', 'address', 'uint8[]'],
+        [encodeExchangeParams, nullAddress, nullAddress, []]
+    );
+
+    const encodeCallData = web3.eth.abi.encodeParameters(
+        ['bytes32', 'bytes'],
+        [web3.utils.keccak256('DfsSell'), encodeActionParams]
+    );
+
+    return encodeCallData;
+};
+
+describe("MCD-Repay", () => {
     let registry, proxy, proxyAddr, makerAddresses, proxyRegistry,
         web3LoanInfo, web3Exchange, collToken, boostAmount, borrowToken,
         collAmount, borrowAmount, getCdps, subscriptions, executor, subId, vaultId;
@@ -98,27 +143,20 @@ describe("MCD-Generate", () => {
         console.log('VaultId: ' + vaultId + ' Ratio: ', ratio);
     });
 
-    it('... should execute a direct generate call', async () => {
-        const amount = web3.utils.toWei('20', 'ether');
-        const generateAddr = await getRegistryAddr(web3, registry, 'McdGenerate');
+    it('... should execute a repay call', async () => {
+        const repayAmount = web3.utils.toWei('0.1', 'ether');
 
-        const callData = encodeMcdGenerateAction(vaultId, amount);
+        const actionManagerProxyAddr = await getRegistryAddr(web3, registry, 'ActionManagerProxy');
 
-        const vaultInfo = await mcdSaverProxy.getCdpDetailedInfo(vaultId.toString());
-        const debtBefore = vaultInfo.debt / 1e18;
+        const withdrawCall = encodeMcdWithdrawAction(vaultId, repayAmount, mcdEthJoin);
+        const sellCall = encodeDfsSellAction(ETH_ADDRESS, makerAddresses["MCD_DAI"], repayAmount);
 
-        const data = web3.eth.abi.encodeFunctionCall(getAbiFunction(ActionInterface, 'executeAction'),
-        [0, callData, []]);
+        const data = web3.eth.abi.encodeFunctionCall(getAbiFunction(ActionManagerProxy, 'manageActions'),
+        [[0, 0], [withdrawCall, sellCall]]);
 
         await web3Proxy.methods['execute(address,bytes)']
-           (generateAddr, data).send({from: accounts[0], gas: 2000000});
+           (actionManagerProxyAddr, data).send({from: accounts[0], gas: 3000000});
 
-        const vaultInfoAfter = await mcdSaverProxy.getCdpDetailedInfo(vaultId.toString());
-        const debtAfter = vaultInfoAfter.debt / 1e18;
-
-        console.log(`Dai before ${debtBefore}, Dai after ${debtAfter}`);
-
-        expect(debtAfter).to.be.gt(debtBefore);
     });
 
     const createVault = async (type, _collAmount, _daiAmount) => {
@@ -144,8 +182,8 @@ describe("MCD-Generate", () => {
             [makerAddresses['CDP_MANAGER'], makerAddresses['MCD_JUG'], makerAddresses[`MCD_JOIN_${type}`], makerAddresses["MCD_JOIN_DAI"], ilk, _collAmount, daiAmount, true]);
         }
 
-    	await proxy.methods['execute(address,bytes)'](makerAddresses['PROXY_ACTIONS'], data, {
-            from: accounts[0], value, gas: 3000000});
+    	// await proxy.methods['execute(address,bytes)'](makerAddresses['PROXY_ACTIONS'], data, {
+        //     from: accounts[0], value, gas: 3000000});
 
         const cdpsAfter = await getCdps.getCdpsAsc(makerAddresses['CDP_MANAGER'], proxyAddr);
         return cdpsAfter.ids[cdpsAfter.ids.length - 1].toString()

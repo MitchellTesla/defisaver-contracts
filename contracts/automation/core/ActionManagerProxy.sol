@@ -13,7 +13,7 @@ import "./Subscriptions.sol";
 /// @title Handle FL taking and calls action executor
 contract ActionManagerProxy is GeneralizedFLTaker, ProxyPermission {
 
-    Registry public constant registry = Registry(0x91ef8Fb063EB7e2aF38AB69b449f992cbE287C94);
+    Registry public constant registry = Registry(0xf20Fa06314385df317D1eF374a944A7e29CCfd89);
 
     /// @notice Checks and takes flash loan and calls Action Executor
     /// @param _actionIds All of the actionIds for the strategy
@@ -49,7 +49,7 @@ contract ActionManagerProxy is GeneralizedFLTaker, ProxyPermission {
     /// @param _actionId Id of first action
     /// @param _firstAction First action call data
     function checkFl(uint _actionId, bytes memory _firstAction) internal returns (uint256, address, uint8) {
-        if (_firstAction.length != 0) {
+        if (_firstAction.length != 0 && _actionId != 0) {
             Subscriptions sub = Subscriptions(registry.getAddr(keccak256("Subscriptions")));
 
             Subscriptions.Action memory action = sub.getAction(_actionId);
