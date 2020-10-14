@@ -38,15 +38,15 @@ const SubscriptionProxy = contract.fromArtifact('SubscriptionProxy');
 const Subscriptions = contract.fromArtifact('Subscriptions');
 const ActionManagerProxy = contract.fromArtifact('ActionManagerProxy');
 
-const registryAddr = '0xC9d3ebD0eE06564Ef70326e954F86BDcfaeEF678';
+const registryAddr = '0x91ef8Fb063EB7e2aF38AB69b449f992cbE287C94';
 
 
 const makerVersion = "1.0.6";
 
-const encodeMcdWithdrawAction = (vaultId, amount, joinAddr) => {
+const encodeMcdSupplyAction = (vaultId, amount, joinAddr, from) => {
     const encodeActionParams = web3.eth.abi.encodeParameters(
-        ['uint256','uint256', 'address', 'uint8[]'],
-        [vaultId, amount, joinAddr, []]
+        ['uint256','uint256', 'address', 'address', 'uint8[]'],
+        [vaultId, amount, joinAddr, from, []]
     );
 
     return encodeActionParams;
@@ -102,7 +102,7 @@ describe("MCD-Supply", () => {
         const amount = web3.utils.toWei('0.1', 'ether');
         const generateAddr = await getRegistryAddr(web3, registry, 'McdSupply');
 
-        const callData = encodeMcdWithdrawAction(vaultId, amount, mcdEthJoin);
+        const callData = encodeMcdSupplyAction(vaultId, amount, mcdEthJoin, accounts[0]);
 
         const vaultInfo = await mcdSaverProxy.getCdpDetailedInfo(vaultId.toString());
         const collBefore = vaultInfo.collateral / 1e18;
@@ -111,14 +111,14 @@ describe("MCD-Supply", () => {
         [0, callData, []]);
 
         await web3Proxy.methods['execute(address,bytes)']
-           (generateAddr, data).send({from: accounts[0], gas: 2000000});
+           (generateAddr, data).send({from: accounts[0], gas: 2000000, value: amount});
 
         const vaultInfoAfter = await mcdSaverProxy.getCdpDetailedInfo(vaultId.toString());
         const collAfter = vaultInfoAfter.collateral / 1e18;
 
         console.log(`Eth before ${collBefore}, Eth after ${collAfter}`);
 
-        expect(collBefore).to.be.gt(collAfter);
+        expect(collAfter).to.be.gt(collBefore);
     });
 
     const createVault = async (type, _collAmount, _daiAmount) => {

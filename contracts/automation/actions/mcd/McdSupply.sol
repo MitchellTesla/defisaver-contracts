@@ -6,6 +6,8 @@ import "../../../interfaces/Vat.sol";
 import "../../../interfaces/Join.sol";
 import "../../../DS/DSMath.sol";
 import "../../../interfaces/ActionInterface.sol";
+import "../../../utils/SafeERC20.sol";
+
 
 contract McdSupply is ActionInterface, DSMath {
     address public constant MANAGER_ADDRESS = 0x5ef30b9986345249bc32d8928B7ee64DE9435E39;
@@ -15,12 +17,14 @@ contract McdSupply is ActionInterface, DSMath {
     Manager public constant manager = Manager(MANAGER_ADDRESS);
     Vat public constant vat = Vat(VAT_ADDRESS);
 
-    // TODO: where is the money supplied comming from, (DSProxy/User)?
+    using SafeERC20 for ERC20;
 
-    function executeAction(uint _actionId, bytes memory _callData, bytes32[] memory _returnValues) override public returns (bytes32) {
+    function executeAction(uint _actionId, bytes memory _callData, bytes32[] memory _returnValues) override public payable returns (bytes32) {
         int convertAmount = 0;
 
-        (uint cdpId, uint amount, address joinAddr) = parseParamData(_callData, _returnValues);
+        (uint cdpId, uint amount, address joinAddr, address from) = parseParamData(_callData, _returnValues);
+
+        pullTokens(joinAddr, from, amount);
 
         if (joinAddr == ETH_JOIN_ADDRESS) {
             Join(joinAddr).gem().deposit{value: amount}();
@@ -51,10 +55,10 @@ contract McdSupply is ActionInterface, DSMath {
     function parseParamData(
         bytes memory _data,
         bytes32[] memory _returnValues
-    ) public pure returns (uint cdpId,uint amount, address joinAddr) {
+    ) public pure returns (uint cdpId,uint amount, address joinAddr, address from) {
         uint8[] memory inputMapping;
 
-        (cdpId, amount, joinAddr, inputMapping) = abi.decode(_data, (uint256,uint256,address,uint8[]));
+        (cdpId, amount, joinAddr, from, inputMapping) = abi.decode(_data, (uint256,uint256,address,address,uint8[]));
 
         // mapping return values to new inputs
         if (inputMapping.length > 0 && _returnValues.length > 0) {
@@ -67,8 +71,16 @@ contract McdSupply is ActionInterface, DSMath {
                     amount = uint(returnValue);
                 } else if (inputMapping[i] == 2) {
                     joinAddr = address(bytes20(returnValue));
+                } else if (inputMapping[i] == 3) {
+                    from = address(bytes20(returnValue));
                 }
             }
+        }
+    }
+
+    function pullTokens(address _joinAddr, address _from, uint _amount) internal {
+        if (_from != address(0) && _joinAddr != ETH_JOIN_ADDRESS) {
+            ERC20(address(Join(_joinAddr).gem())).safeTransferFrom(_from, address(this), _amount);
         }
     }
 

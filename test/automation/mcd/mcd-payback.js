@@ -22,6 +22,8 @@ const {
 } = require('../../helper.js');
 
 const mcdEthJoin = '0x2F0b23f53734252Bda2277357e97e1517d6B042A';
+const mcdDaiJoin = '0x9759A6Ac90977b93B58547b4A71c78317f391A28';
+
 
 const DSProxy = contract.fromArtifact("DSProxy");
 const ProxyRegistryInterface = contract.fromArtifact("ProxyRegistryInterface");
@@ -43,10 +45,10 @@ const registryAddr = '0x91ef8Fb063EB7e2aF38AB69b449f992cbE287C94';
 
 const makerVersion = "1.0.6";
 
-const encodeMcdWithdrawAction = (vaultId, amount, joinAddr) => {
+const encodeMcdPaybackAction = (vaultId, amount, from) => {
     const encodeActionParams = web3.eth.abi.encodeParameters(
         ['uint256','uint256', 'address', 'uint8[]'],
-        [vaultId, amount, joinAddr, []]
+        [vaultId, amount, from, []]
     );
 
     return encodeActionParams;
@@ -59,7 +61,7 @@ const getRegistryAddr = async (web3, registry, name) => {
     return addr;
 }
 
-describe("MCD-Withdraw", () => {
+describe("MCD-Payback", () => {
     let registry, proxy, proxyAddr, makerAddresses, proxyRegistry,
         web3LoanInfo, web3Exchange, collToken, boostAmount, borrowToken,
         collAmount, borrowAmount, getCdps, subscriptions, executor, subId, vaultId;
@@ -88,6 +90,10 @@ describe("MCD-Withdraw", () => {
     };
 
     it('... should create and subscribe ETH vault', async () => {
+
+        const ethBalance = await getBalance(web3, accounts[0], ETH_ADDRESS);
+        console.log(ethBalance.toString() / 1e18);
+
         const ilk = 'ETH_A';
         const collAmount = web3.utils.toWei('2', 'ether');
         const debtAmount =  web3.utils.toWei('300', 'ether');
@@ -98,27 +104,29 @@ describe("MCD-Withdraw", () => {
         console.log('VaultId: ' + vaultId + ' Ratio: ', ratio);
     });
 
-    it('... should execute a direct withdraw call', async () => {
-        const amount = web3.utils.toWei('0.1', 'ether');
-        const generateAddr = await getRegistryAddr(web3, registry, 'McdWithdraw');
+    it('... should execute a direct payback call', async () => {
+        const amount = web3.utils.toWei('10', 'ether');
+        const paybackAddr = await getRegistryAddr(web3, registry, 'McdPayback');
 
-        const callData = encodeMcdWithdrawAction(vaultId, amount, mcdEthJoin);
+        await approve(web3, makerAddresses["MCD_DAI"], accounts[0], proxyAddr);
+
+        const callData = encodeMcdPaybackAction(vaultId, amount, accounts[0]);
 
         const vaultInfo = await mcdSaverProxy.getCdpDetailedInfo(vaultId.toString());
-        const collBefore = vaultInfo.collateral / 1e18;
+        const debtBefore = vaultInfo.debt / 1e18;
 
         const data = web3.eth.abi.encodeFunctionCall(getAbiFunction(ActionInterface, 'executeAction'),
         [0, callData, []]);
 
         await web3Proxy.methods['execute(address,bytes)']
-           (generateAddr, data).send({from: accounts[0], gas: 2000000});
+           (paybackAddr, data).send({from: accounts[0], gas: 3000000});
 
         const vaultInfoAfter = await mcdSaverProxy.getCdpDetailedInfo(vaultId.toString());
-        const collAfter = vaultInfoAfter.collateral / 1e18;
+        const debtAfter = vaultInfoAfter.debt / 1e18;
 
-        console.log(`Eth before ${collBefore}, Eth after ${collAfter}`);
+        console.log(`Dai before ${debtBefore}, Dai after ${debtAfter}`);
 
-        expect(collBefore).to.be.gt(collAfter);
+        expect(debtBefore).to.be.gt(debtAfter);
     });
 
     const createVault = async (type, _collAmount, _daiAmount) => {

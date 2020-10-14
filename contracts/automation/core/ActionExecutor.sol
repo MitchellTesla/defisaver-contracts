@@ -11,7 +11,7 @@ import "./Subscriptions.sol";
 /// @title Executes a series of actions by calling the users DSProxy
 contract ActionExecutor is FlashLoanReceiverBase {
 
-    Registry public constant registry = Registry(0xC9d3ebD0eE06564Ef70326e954F86BDcfaeEF678);
+    Registry public constant registry = Registry(0x91ef8Fb063EB7e2aF38AB69b449f992cbE287C94);
 
     address public constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
