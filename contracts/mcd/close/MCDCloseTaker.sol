@@ -28,6 +28,7 @@ contract MCDCloseTaker is MCDSaverProxyHelper {
     address public constant SPOTTER_ADDRESS = 0x65C79fcB50Ca1594B025960e539eD7A9a6D434A3;
     address public constant VAT_ADDRESS = 0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B;
     address public constant DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address public constant ETH_ADDR = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     // solhint-disable-next-line const-name-snakecase
     DefisaverLogger public constant logger = DefisaverLogger(DEFISAVER_LOGGER);
@@ -62,6 +63,9 @@ contract MCDCloseTaker is MCDSaverProxyHelper {
 
             (_closeData.collAmount, )
                 = getCdpInfo(manager, _closeData.cdpId, manager.ilks(_closeData.cdpId));
+
+            _closeData.collAmount = _closeData.collAmount /
+                10 ** (18 - _getDecimals(address(Join(_closeData.joinAddr).gem())));
         }
 
         manager.cdpAllow(_closeData.cdpId, mcdCloseFlashLoan, 1);
@@ -107,6 +111,12 @@ contract MCDCloseTaker is MCDSaverProxyHelper {
         if (isSubscribed) {
             IMCDSubscriptions(_subContract).unsubscribe(_cdpId);
         }
+    }
+
+    function _getDecimals(address _token) internal view returns (uint256) {
+        if (_token == ETH_ADDR) return 18;
+
+        return ERC20(_token).decimals();
     }
 
     function _packData(

@@ -157,6 +157,9 @@ describe("MCD-Repay", () => {
         await web3Proxy.methods['execute(address,bytes)']
            (actionManagerProxyAddr, data).send({from: accounts[0], gas: 3000000});
 
+        const ratio = await getRatio(vaultId);
+        console.log('VaultId: ' + vaultId + ' Ratio: ', ratio);
+
     });
 
     const createVault = async (type, _collAmount, _daiAmount) => {

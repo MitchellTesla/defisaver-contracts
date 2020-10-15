@@ -13,7 +13,7 @@ contract DfsSell is ActionInterface, SaverExchangeCore {
 
         (, uint exchangedAmount) = _sell(exchangeData);
 
-        withdrawTokens(exchangeData.destAddr, payable(to), exchangedAmount);
+        withdrawTokens(exchangeData.destAddr, to, exchangedAmount);
 
         return bytes32(exchangedAmount);
     }
@@ -28,11 +28,11 @@ contract DfsSell is ActionInterface, SaverExchangeCore {
         }
     }
 
-    function withdrawTokens(address _token, address payable _to, uint _amount) internal {
+    function withdrawTokens(address _token, address _to, uint _amount) internal {
         if (_to != address(0) && _token != KYBER_ETH_ADDRESS) {
             ERC20(_token).safeTransfer(_to, _amount);
         } else {
-            _to.transfer(_amount);
+            payable(_to).transfer(_amount);
         }
     }
 

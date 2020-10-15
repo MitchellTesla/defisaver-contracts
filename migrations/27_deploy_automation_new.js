@@ -43,7 +43,7 @@ module.exports = async (deployer, network, accounts) => {
 
     // await deployer.deploy(BotAuth, {gas: 6720000, overwrite: deployAgain});
     // await deployer.deploy(ActionManagerProxy, {gas: 6720000, overwrite: deployAgain});
-    await deployer.deploy(ActionExecutor, {gas: 6720000, overwrite: deployAgain});
+    // await deployer.deploy(ActionExecutor, {gas: 6720000, overwrite: deployAgain});
 
     // await deployer.deploy(McdGenerate, {gas: 6720000, overwrite: deployAgain});
     // await deployer.deploy(McdPayback, {gas: 6720000, overwrite: deployAgain});
@@ -52,7 +52,7 @@ module.exports = async (deployer, network, accounts) => {
 
     // await deployer.deploy(McdRatioTrigger, {gas: 6720000, overwrite: deployAgain});
 
-    // await deployer.deploy(DfsSell, {gas: 6720000, overwrite: deployAgain});
+    await deployer.deploy(DfsSell, {gas: 6720000, overwrite: deployAgain});
 
     // const botAuthAddress = (await BotAuth.deployed()).address;
     // const botAuth = await BotAuth.at(botAuthAddress);
@@ -65,8 +65,8 @@ module.exports = async (deployer, network, accounts) => {
     // const actionManagerProxyAddress = (await ActionManagerProxy.deployed()).address;
     // await registry.changeInsant(web3.utils.keccak256('ActionManagerProxy'), actionManagerProxyAddress);
 
-    const actionExecutorAddress = (await ActionExecutor.deployed()).address;
-    await registry.changeInsant(web3.utils.keccak256('ActionExecutor'), actionExecutorAddress);
+    // const actionExecutorAddress = (await ActionExecutor.deployed()).address;
+    // await registry.changeInsant(web3.utils.keccak256('ActionExecutor'), actionExecutorAddress);
 
     // const mcdGenerateAddress = (await McdGenerate.deployed()).address;
     // await registry.addNewContract(web3.utils.keccak256('McdGenerate'), mcdGenerateAddress, 0);
@@ -77,8 +77,8 @@ module.exports = async (deployer, network, accounts) => {
     // const mcdSupplyAddress = (await McdSupply.deployed()).address;
     // await registry.addNewContract(web3.utils.keccak256('McdSupply'), mcdSupplyAddress, 0);
 
-    // const dfsSellAddress = (await DfsSell.deployed()).address;
-    // await registry.addNewContract(web3.utils.keccak256('DfsSell'), dfsSellAddress, 0);
+    const dfsSellAddress = (await DfsSell.deployed()).address;
+    await registry.changeInsant(web3.utils.keccak256('DfsSell'), dfsSellAddress);
 
     // const mcdWithdrawAddress = (await McdWithdraw.deployed()).address;
     // await registry.addNewContract(web3.utils.keccak256('McdWithdraw'), mcdWithdrawAddress, 0);
