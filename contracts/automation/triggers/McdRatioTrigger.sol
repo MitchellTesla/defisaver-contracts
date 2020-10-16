@@ -16,9 +16,9 @@ contract McdRatioTrigger is TriggerInterface, DSMath {
 
     enum RatioState { OVER, UNDER }
 
-    function isTriggered(bytes memory _callData, bytes memory _triggerData) public override returns (bool) {
+    function isTriggered(bytes memory _callData, bytes memory _subData) public override returns (bool) {
         (uint nextPrice) = parseParamData(_callData);
-        (uint cdpId, uint ratio, RatioState state) = parseTriggerData(_triggerData);
+        (uint cdpId, uint ratio, RatioState state) = parseSubData(_subData);
 
         uint currRatio = getRatio(cdpId, nextPrice);
 
@@ -33,7 +33,7 @@ contract McdRatioTrigger is TriggerInterface, DSMath {
         return false;
     }
 
-    function parseTriggerData(bytes memory _data) public pure returns (uint, uint, RatioState) {
+    function parseSubData(bytes memory _data) public pure returns (uint, uint, RatioState) {
         (uint cdpId, uint ratio, uint8 state) = abi.decode(_data, (uint256,uint256,uint8));
 
         return (cdpId, ratio, RatioState(state));
