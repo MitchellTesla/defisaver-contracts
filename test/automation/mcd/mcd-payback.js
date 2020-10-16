@@ -40,7 +40,7 @@ const SubscriptionProxy = contract.fromArtifact('SubscriptionProxy');
 const Subscriptions = contract.fromArtifact('Subscriptions');
 const ActionManagerProxy = contract.fromArtifact('ActionManagerProxy');
 
-const registryAddr = '0xf20Fa06314385df317D1eF374a944A7e29CCfd89';
+const registryAddr = '0x6BDEC965Ee0eE806f266B3da0F28bc8a5FBfBf38';
 
 
 const makerVersion = "1.0.6";

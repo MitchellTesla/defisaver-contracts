@@ -39,27 +39,75 @@ const Subscriptions = contract.fromArtifact('Subscriptions');
 const ActionManagerProxy = contract.fromArtifact('ActionManagerProxy');
 
 const registryAddr = '0x6BDEC965Ee0eE806f266B3da0F28bc8a5FBfBf38';
+const wrapperAddress = '0x3Ba0319533C578527aE69BF7fA2D289F20B9B55c';
 
 
 const makerVersion = "1.0.6";
 
-const encodeMcdWithdrawAction = (vaultId, amount, joinAddr) => {
-    const encodeActionParams = web3.eth.abi.encodeParameters(
-        ['uint256','uint256', 'address', 'uint8[]'],
-        [vaultId, amount, joinAddr, []]
-    );
-
-    return encodeActionParams;
-};
-
 const getRegistryAddr = async (web3, registry, name) => {
-    console.log(web3.utils.keccak256(name));
     const addr = await registry.methods.getAddr(web3.utils.keccak256(name)).call();
 
     return addr;
 }
 
-describe("MCD-Withdraw", () => {
+const encodeMcdGenerateAction = (vaultId, amount) => {
+    const encodeActionParams = web3.eth.abi.encodeParameters(
+        ['uint256','uint256', 'uint8[]'],
+        [vaultId, amount, []]
+    );
+
+    const encodeCallData = web3.eth.abi.encodeParameters(
+        ['bytes32', 'bytes'],
+        [web3.utils.keccak256('McdGenerate'), encodeActionParams]
+    );
+
+    return encodeCallData;
+};
+
+const encodeDfsSellAction = (fromToken, toToken, amount) => {
+    const encodeExchangeParams1 = web3.eth.abi.encodeParameters(
+        ['address', 'address', 'uint256', 'uint256'],
+        [fromToken, toToken, amount, 0]
+    );
+
+    const encodeExchangeParams2 = web3.eth.abi.encodeParameters(
+        ['uint256', 'address', 'address', 'bytes', 'uint256'],
+        [0, wrapperAddress, nullAddress, "0x0", 0]
+    );
+
+    const encodeExchangeParams = web3.eth.abi.encodeParameters(
+        ['bytes', 'bytes'],
+        [encodeExchangeParams1, encodeExchangeParams2]
+    );
+
+    const encodeActionParams = web3.eth.abi.encodeParameters(
+        ['bytes', 'address', 'address', 'uint8[]'],
+        [encodeExchangeParams, nullAddress, nullAddress, [2, 0]]
+    );
+
+    const encodeCallData = web3.eth.abi.encodeParameters(
+        ['bytes32', 'bytes'],
+        [web3.utils.keccak256('DfsSell'), encodeActionParams]
+    );
+
+    return encodeCallData;
+};
+
+const encodeMcdSupplyAction = (vaultId, amount, joinAddr) => {
+    const encodeActionParams = web3.eth.abi.encodeParameters(
+        ['uint256','uint256', 'address', 'address', 'uint8[]'],
+        [vaultId, amount, joinAddr, nullAddress, [1, 1]]
+    );
+
+    const encodeCallData = web3.eth.abi.encodeParameters(
+        ['bytes32', 'bytes'],
+        [web3.utils.keccak256('McdSupply'), encodeActionParams]
+    );
+
+    return encodeCallData;
+};
+
+describe("MCD-Boost", () => {
     let registry, proxy, proxyAddr, makerAddresses, proxyRegistry,
         web3LoanInfo, web3Exchange, collToken, boostAmount, borrowToken,
         collAmount, borrowAmount, getCdps, subscriptions, executor, subId, vaultId;
@@ -81,12 +129,6 @@ describe("MCD-Withdraw", () => {
         mcdSaverProxy = await MCDSaverProxy.at(mcdSaverProxyAddress);
     });
 
-    const getRegistryAddr = async (web3, registry, name) => {
-        const addr = await registry.methods.getAddr(web3.utils.keccak256(name)).call();
-
-        return addr;
-    };
-
     it('... should create and subscribe ETH vault', async () => {
         const ilk = 'ETH_A';
         const collAmount = web3.utils.toWei('2', 'ether');
@@ -98,27 +140,24 @@ describe("MCD-Withdraw", () => {
         console.log('VaultId: ' + vaultId + ' Ratio: ', ratio);
     });
 
-    it('... should execute a direct withdraw call', async () => {
-        const amount = web3.utils.toWei('0.1', 'ether');
-        const generateAddr = await getRegistryAddr(web3, registry, 'McdWithdraw');
+    it('... should execute a boost call', async () => {
+        const boostAmount = web3.utils.toWei('50', 'ether');
 
-        const callData = encodeMcdWithdrawAction(vaultId, amount, mcdEthJoin);
+        const actionManagerProxyAddr = await getRegistryAddr(web3, registry, 'ActionManagerProxy');
 
-        const vaultInfo = await mcdSaverProxy.getCdpDetailedInfo(vaultId.toString());
-        const collBefore = vaultInfo.collateral / 1e18;
+        const generateCall = encodeMcdGenerateAction(vaultId, boostAmount);
+        const sellCall = encodeDfsSellAction(makerAddresses["MCD_DAI"], ETH_ADDRESS, 0);
+        const supplyCall = encodeMcdSupplyAction(vaultId, 0, mcdEthJoin);
 
-        const data = web3.eth.abi.encodeFunctionCall(getAbiFunction(ActionInterface, 'executeAction'),
-        [0, callData, []]);
+        const data = web3.eth.abi.encodeFunctionCall(getAbiFunction(ActionManagerProxy, 'manageActions'),
+        [[0, 0, 0], [generateCall, sellCall, supplyCall]]);
 
         await web3Proxy.methods['execute(address,bytes)']
-           (generateAddr, data).send({from: accounts[0], gas: 2000000});
+           (actionManagerProxyAddr, data).send({from: accounts[0], gas: 3000000});
 
-        const vaultInfoAfter = await mcdSaverProxy.getCdpDetailedInfo(vaultId.toString());
-        const collAfter = vaultInfoAfter.collateral / 1e18;
+        const ratio = await getRatio(vaultId);
+        console.log('VaultId: ' + vaultId + ' Ratio: ', ratio);
 
-        console.log(`Eth before ${collBefore}, Eth after ${collAfter}`);
-
-        expect(collBefore).to.be.gt(collAfter);
     });
 
     const createVault = async (type, _collAmount, _daiAmount) => {

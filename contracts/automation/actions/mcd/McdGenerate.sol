@@ -28,7 +28,7 @@ contract McdGenerate is ActionInterface, DSMath, MCDSaverProxyHelper {
     Vat public constant vat = Vat(VAT_ADDRESS);
     Spotter public constant spotter = Spotter(SPOTTER_ADDRESS);
 
-    Registry public constant registry = Registry(0xf20Fa06314385df317D1eF374a944A7e29CCfd89);
+    Registry public constant registry = Registry(0x6BDEC965Ee0eE806f266B3da0F28bc8a5FBfBf38);
 
     function executeAction(uint _actionId, bytes memory _callData, bytes32[] memory _returnValues) override public payable returns (bytes32) {
         (uint cdpId, uint amount) = parseParamData(_callData, _returnValues);

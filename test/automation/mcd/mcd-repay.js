@@ -38,24 +38,13 @@ const SubscriptionProxy = contract.fromArtifact('SubscriptionProxy');
 const Subscriptions = contract.fromArtifact('Subscriptions');
 const ActionManagerProxy = contract.fromArtifact('ActionManagerProxy');
 
-const registryAddr = '0xf20Fa06314385df317D1eF374a944A7e29CCfd89';
+const registryAddr = '0x6BDEC965Ee0eE806f266B3da0F28bc8a5FBfBf38';
 const wrapperAddress = '0x3Ba0319533C578527aE69BF7fA2D289F20B9B55c';
 
 
 const makerVersion = "1.0.6";
 
-const encodeMcdSupplyAction = (vaultId, amount, joinAddr, from) => {
-
-    const encodeActionParams = web3.eth.abi.encodeParameters(
-        ['bytes32', 'uint256','uint256', 'address', 'address', 'uint8[]'],
-        [web3.utils.keccak256('McdSupply'), vaultId, amount, joinAddr, from, []]
-    );
-
-    return encodeActionParams;
-};
-
 const getRegistryAddr = async (web3, registry, name) => {
-    console.log(web3.utils.keccak256(name));
     const addr = await registry.methods.getAddr(web3.utils.keccak256(name)).call();
 
     return addr;
@@ -93,12 +82,26 @@ const encodeDfsSellAction = (fromToken, toToken, amount) => {
 
     const encodeActionParams = web3.eth.abi.encodeParameters(
         ['bytes', 'address', 'address', 'uint8[]'],
-        [encodeExchangeParams, nullAddress, nullAddress, []]
+        [encodeExchangeParams, nullAddress, nullAddress, [2, 0]]
     );
 
     const encodeCallData = web3.eth.abi.encodeParameters(
         ['bytes32', 'bytes'],
         [web3.utils.keccak256('DfsSell'), encodeActionParams]
+    );
+
+    return encodeCallData;
+};
+
+const encodeMcdPaybackAction = (vaultId, amount) => {
+    const encodeActionParams = web3.eth.abi.encodeParameters(
+        ['uint256','uint256', 'address', 'uint8[]'],
+        [vaultId, amount, nullAddress, [1, 1]]
+    );
+
+    const encodeCallData = web3.eth.abi.encodeParameters(
+        ['bytes32', 'bytes'],
+        [web3.utils.keccak256('McdPayback'), encodeActionParams]
     );
 
     return encodeCallData;
@@ -126,12 +129,6 @@ describe("MCD-Repay", () => {
         mcdSaverProxy = await MCDSaverProxy.at(mcdSaverProxyAddress);
     });
 
-    const getRegistryAddr = async (web3, registry, name) => {
-        const addr = await registry.methods.getAddr(web3.utils.keccak256(name)).call();
-
-        return addr;
-    };
-
     it('... should create and subscribe ETH vault', async () => {
         const ilk = 'ETH_A';
         const collAmount = web3.utils.toWei('2', 'ether');
@@ -145,14 +142,16 @@ describe("MCD-Repay", () => {
 
     it('... should execute a repay call', async () => {
         const repayAmount = web3.utils.toWei('0.1', 'ether');
+        const daiAmount = web3.utils.toWei('30', 'ether');
 
         const actionManagerProxyAddr = await getRegistryAddr(web3, registry, 'ActionManagerProxy');
 
         const withdrawCall = encodeMcdWithdrawAction(vaultId, repayAmount, mcdEthJoin);
-        const sellCall = encodeDfsSellAction(ETH_ADDRESS, makerAddresses["MCD_DAI"], repayAmount);
+        const sellCall = encodeDfsSellAction(ETH_ADDRESS, makerAddresses["MCD_DAI"], 0);
+        const paybackCall = encodeMcdPaybackAction(vaultId, 0);
 
         const data = web3.eth.abi.encodeFunctionCall(getAbiFunction(ActionManagerProxy, 'manageActions'),
-        [[0, 0], [withdrawCall, sellCall]]);
+        [[0, 0, 0], [withdrawCall, sellCall, paybackCall]]);
 
         await web3Proxy.methods['execute(address,bytes)']
            (actionManagerProxyAddr, data).send({from: accounts[0], gas: 3000000});
@@ -185,8 +184,8 @@ describe("MCD-Repay", () => {
             [makerAddresses['CDP_MANAGER'], makerAddresses['MCD_JUG'], makerAddresses[`MCD_JOIN_${type}`], makerAddresses["MCD_JOIN_DAI"], ilk, _collAmount, daiAmount, true]);
         }
 
-    	// await proxy.methods['execute(address,bytes)'](makerAddresses['PROXY_ACTIONS'], data, {
-        //     from: accounts[0], value, gas: 3000000});
+    	await proxy.methods['execute(address,bytes)'](makerAddresses['PROXY_ACTIONS'], data, {
+            from: accounts[0], value, gas: 3000000});
 
         const cdpsAfter = await getCdps.getCdpsAsc(makerAddresses['CDP_MANAGER'], proxyAddr);
         return cdpsAfter.ids[cdpsAfter.ids.length - 1].toString()
