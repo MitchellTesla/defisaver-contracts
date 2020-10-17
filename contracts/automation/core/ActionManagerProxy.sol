@@ -13,7 +13,7 @@ import "./Subscriptions.sol";
 /// @title Handle FL taking and calls action executor
 contract ActionManagerProxy is GeneralizedFLTaker, ProxyPermission {
 
-    Registry public constant registry = Registry(0x6BDEC965Ee0eE806f266B3da0F28bc8a5FBfBf38);
+    Registry public constant registry = Registry(0x2f111D6611D3a3d559992f39e3F05aC0385dCd5D);
 
     /// @notice Checks and takes flash loan and calls Action Executor
     /// @param _actionIds All of the actionIds for the strategy
@@ -49,18 +49,22 @@ contract ActionManagerProxy is GeneralizedFLTaker, ProxyPermission {
     /// @param _actionId Id of first action
     /// @param _firstAction First action call data
     function checkFl(uint _actionId, bytes memory _firstAction) internal returns (uint256, address, uint8) {
-        if (_firstAction.length != 0 && _actionId != 0) {
-            Subscriptions sub = Subscriptions(registry.getAddr(keccak256("Subscriptions")));
+        Subscriptions sub = Subscriptions(registry.getAddr(keccak256("Subscriptions")));
+        bytes32 id;
 
-            Subscriptions.Action memory action = sub.getAction(_actionId);
-            address payable actionExecutorAddr = payable(registry.getAddr(action.id));
+        if (_actionId != 0) {
+            id = sub.getAction(_actionId).id;
+        } else {
+            (id, _firstAction) = abi.decode(_firstAction, (bytes32, bytes));
+        }
 
-            if (FLActionInterface(actionExecutorAddr).actionType() == 0) {
-                bytes memory flData = FLActionInterface(actionExecutorAddr).executeAction(_actionId, _firstAction);
-                (uint flAmount, address loanAddr, uint8 flType) = abi.decode(flData, (uint256,address,uint8));
+        address payable actionExecutorAddr = payable(registry.getAddr(id));
 
-                return (flAmount, loanAddr, flType);
-            }
+        if (FLActionInterface(actionExecutorAddr).actionType() == 0) {
+            bytes memory flData = FLActionInterface(actionExecutorAddr).executeAction(_actionId, _firstAction);
+            (uint flAmount, address loanAddr, uint8 flType) = abi.decode(flData, (uint256,address,uint8));
+
+            return (flAmount, loanAddr, flType);
         }
 
         return (0, address(0), 0);

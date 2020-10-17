@@ -11,7 +11,7 @@ import "./Registry.sol";
 /// @title Main entry point for executing automated strategies
 contract Executor is StrategyData {
 
-    Registry public constant registry = Registry(0x6BDEC965Ee0eE806f266B3da0F28bc8a5FBfBf38);
+    Registry public constant registry = Registry(0x2f111D6611D3a3d559992f39e3F05aC0385dCd5D);
     // Subscriptions public constant subscriptions = Subscriptions(0x76a185a4f66C0d09eBfbD916e0AD0f1CDF6B911b);
 
     /// @notice Checks all the triggers and executes actions

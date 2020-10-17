@@ -4,19 +4,19 @@ pragma experimental ABIEncoderV2;
 import "../interfaces/ILendingPool.sol";
 import "./DydxFlashLoanBase.sol";
 import "../utils/SafeERC20.sol";
+import "../utils/DebugInfo.sol";
 
 contract GeneralizedFLTaker is DydxFlashLoanBase {
 
-    enum LoanType { AAVE, DYDX }
+    enum LoanType { NO_LOAN, AAVE, DYDX }
 
     using SafeERC20 for ERC20;
 
-    address public constant AAVE_LENDING_POOL_ADDRESSES = 0x24a42fD28C976A61Df5D00D0599C34c4f90748c8;
+    address public constant AAVE_LENDING_POOL_ADDRESSES = 0x398eC7346DcD622eDc5ae82352F02bE94C62d119;
     address public constant ETH_ADDR = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address public constant WETH_ADDR = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
     // TODO: should we check if _amount request is avail. ?
-    // TODO: Should AaveLendingPoolAddr be mutable?
     function takeLoan(
         address payable _receiver,
         address _token,

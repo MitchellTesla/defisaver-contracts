@@ -11,7 +11,7 @@ import "./Subscriptions.sol";
 /// @title Executes a series of actions by calling the users DSProxy
 contract ActionExecutor is FlashLoanReceiverBase {
 
-    Registry public constant registry = Registry(0x6BDEC965Ee0eE806f266B3da0F28bc8a5FBfBf38);
+    Registry public constant registry = Registry(0x2f111D6611D3a3d559992f39e3F05aC0385dCd5D);
 
     address public constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
@@ -59,7 +59,6 @@ contract ActionExecutor is FlashLoanReceiverBase {
                 id = sub.getAction(_actionIds[i]).id;
             } else {
                 (id, _actions[i]) = abi.decode(_actions[i], (bytes32, bytes));
-
             }
 
             responses[i] = DSProxyInterface(_proxy).execute{value: address(this).balance}(registry.getAddr(id),
@@ -72,7 +71,7 @@ contract ActionExecutor is FlashLoanReceiverBase {
         }
 
         if (_flType == FlType.AAVE_LOAN) {
-            transferFundsBackToPoolInternal(_loanTokenAddr, _loanAmount.add(_feeAmount));
+           transferFundsBackToPoolInternal(_loanTokenAddr, _loanAmount.add(_feeAmount));
         }
 
         if (_flType == FlType.DYDX_LOAN) {
@@ -82,18 +81,19 @@ contract ActionExecutor is FlashLoanReceiverBase {
 
     /// @notice Aave entry point, will be called if aave FL is taken
     function executeOperation(
-        address _tokenAddr,
+        address _reserve,
         uint256 _amount,
         uint256 _fee,
-        bytes memory _params)
-    public override {
+        bytes calldata _params)
+    external override {
+
         address proxy;
         bytes[] memory actions;
         uint[] memory actionIds;
 
-        (actions, actionIds, proxy, _tokenAddr, _amount)
+        (actions, actionIds, proxy, _reserve, _amount)
             = abi.decode(_params, (bytes[],uint[],address,address,uint256));
-        callActions(actions, actionIds, proxy, _tokenAddr, _amount, _fee, FlType.AAVE_LOAN);
+        callActions(actions, actionIds, proxy, _reserve, _amount, _fee, FlType.AAVE_LOAN);
     }
 
     /// @notice  DyDx FL entry point, will be called if aave FL is taken
@@ -112,8 +112,11 @@ contract ActionExecutor is FlashLoanReceiverBase {
         )
         = abi.decode(data, (bytes[],uint[],address,address,uint256));
 
-        callActions(actions, actionIds, proxy, tokenAddr, amount, 0, FlType.DYDX_LOAN);
+        if (tokenAddr == WETH_ADDRESS || tokenAddr == ETH_ADDRESS) {
+            TokenInterface(WETH_ADDRESS).withdraw(amount);
+        }
 
+        callActions(actions, actionIds, proxy, tokenAddr, amount, 0, FlType.DYDX_LOAN);
     }
 
     /// @notice Returns the FL amount for DyDx to the DsProxy
@@ -125,4 +128,7 @@ contract ActionExecutor is FlashLoanReceiverBase {
             ERC20(_loanTokenAddr).safeTransfer(_proxy, _amount);
         }
     }
+
+    // solhint-disable-next-line no-empty-blocks
+    receive() external override(FlashLoanReceiverBase) payable {}
 }

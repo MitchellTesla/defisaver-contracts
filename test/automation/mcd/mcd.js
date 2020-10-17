@@ -37,10 +37,10 @@ const SubscriptionProxy = contract.fromArtifact('SubscriptionProxy');
 const Subscriptions = contract.fromArtifact('Subscriptions');
 const ActionManagerProxy = contract.fromArtifact('ActionManagerProxy');
 
-const executorAddr = '0x081236e1B50884e005cd0A320D7d3Af3Ca07ae97';
-const subscriptionProxyAddr = '0xBBC14Bd0085bC9e5f1d9aCbCD49ED3A8F6a58d59';
+const executorAddr = '0xf8950Da3C4211D7Ea80907d7B4727161aE471f87';
+const subscriptionProxyAddr = '0x9077E258672B4B183eA2424c63D161A933032B7E';
 const subscriptionAddr = '0xdB90D95ea2095daAcEdD4785EC55855f4A590bB0';
-const registryAddr = '0x6BDEC965Ee0eE806f266B3da0F28bc8a5FBfBf38';
+const registryAddr = '0x2f111D6611D3a3d559992f39e3F05aC0385dCd5D';
 
 const makerVersion = "1.0.6";
 

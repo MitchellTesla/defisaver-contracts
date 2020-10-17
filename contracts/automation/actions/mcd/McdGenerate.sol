@@ -22,13 +22,11 @@ contract McdGenerate is ActionInterface, DSMath, MCDSaverProxyHelper {
     address public constant SPOTTER_ADDRESS = 0x65C79fcB50Ca1594B025960e539eD7A9a6D434A3;
     address public constant DAI_JOIN_ADDRESS = 0x9759A6Ac90977b93B58547b4A71c78317f391A28;
 
-    // DebugInfo public constant console = DebugInfo(0x004C6D77c577aaC0F21F9cbDD9b26B1a0553feb6);
-
     Manager public constant manager = Manager(MANAGER_ADDRESS);
     Vat public constant vat = Vat(VAT_ADDRESS);
     Spotter public constant spotter = Spotter(SPOTTER_ADDRESS);
 
-    Registry public constant registry = Registry(0x6BDEC965Ee0eE806f266B3da0F28bc8a5FBfBf38);
+    Registry public constant registry = Registry(0x2f111D6611D3a3d559992f39e3F05aC0385dCd5D);
 
     function executeAction(uint _actionId, bytes memory _callData, bytes32[] memory _returnValues) override public payable returns (bytes32) {
         (uint cdpId, uint amount) = parseParamData(_callData, _returnValues);
