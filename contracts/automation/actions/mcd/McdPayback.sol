@@ -8,11 +8,11 @@ import "../../../interfaces/Vat.sol";
 import "../../../interfaces/Join.sol";
 import "../../../interfaces/DaiJoin.sol";
 import "../../../DS/DSMath.sol";
-import "../../../interfaces/ActionInterface.sol";
+import "../ActionBase.sol";
 import "../../../utils/SafeERC20.sol";
 
 
-contract McdPayback is ActionInterface, DSMath, MCDSaverProxyHelper {
+contract McdPayback is ActionBase, DSMath, MCDSaverProxyHelper {
     address public constant MANAGER_ADDRESS = 0x5ef30b9986345249bc32d8928B7ee64DE9435E39;
     address public constant VAT_ADDRESS = 0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B;
     address public constant DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -47,6 +47,8 @@ contract McdPayback is ActionInterface, DSMath, MCDSaverProxyHelper {
         DaiJoin(DAI_JOIN_ADDRESS).join(urn, amount);
 
         manager.frob(cdpId, 0, normalizePaybackAmount(VAT_ADDRESS, urn, ilk));
+
+        logger.Log(address(this), msg.sender, "McdPayback", abi.encode(cdpId, amount, from));
 
         return bytes32(amount);
     }

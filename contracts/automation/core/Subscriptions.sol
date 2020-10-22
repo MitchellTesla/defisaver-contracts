@@ -17,7 +17,7 @@ contract Subscriptions is StrategyData {
     /// @notice Subscribes a new strategy for a user
     /// @param _triggers Array of trigger data
     /// @param _actions Array of action data
-    function subscribe(Trigger[] memory _triggers, Action[] memory _actions) public {
+    function subscribe(string memory _name, Trigger[] memory _triggers, Action[] memory _actions) public {
         uint[] memory triggerIds = new uint[](_triggers.length);
         uint[] memory actionsIds = new uint[](_actions.length);
 
@@ -42,7 +42,7 @@ contract Subscriptions is StrategyData {
         }
 
         strategies.push(Strategy({
-            user: getProxyOwner(msg.sender),
+            name: _name,
             proxy: msg.sender,
             active: true,
             triggerIds: triggerIds,
@@ -60,7 +60,7 @@ contract Subscriptions is StrategyData {
     /// @param _actions Array of action data
     function update(uint _subId, Trigger[] memory _triggers, Action[] memory _actions) public {
         Strategy memory s = strategies[_subId];
-        require(s.user != address(0), "Strategy does not exist");
+        require(s.proxy != address(0), "Strategy does not exist");
         require(msg.sender == s.proxy, "Proxy not strategy owner");
 
         // update triggers
@@ -86,7 +86,7 @@ contract Subscriptions is StrategyData {
     /// @param _subId Subscription id
     function unsubscribe(uint _subId) public {
         Strategy memory s = strategies[_subId];
-        require(s.user != address(0), "Strategy does not exist");
+        require(s.proxy != address(0), "Strategy does not exist");
         require(msg.sender == s.proxy, "Proxy not strategy owner");
 
         strategies[_subId].active = false;

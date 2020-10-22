@@ -5,13 +5,13 @@ import "../../interfaces/DSProxyInterface.sol";
 import "../../interfaces/TokenInterface.sol";
 import "../../savings/dydx/ISoloMargin.sol";
 import "../../flashloan/FlashLoanReceiverBase.sol";
-import "../core/Registry.sol";
+import "../core/DFSRegistry.sol";
 import "./Subscriptions.sol";
 
 /// @title Executes a series of actions by calling the users DSProxy
 contract ActionExecutor is FlashLoanReceiverBase {
 
-    Registry public constant registry = Registry(0x2f111D6611D3a3d559992f39e3F05aC0385dCd5D);
+    DFSRegistry public constant registry = DFSRegistry(0x2f111D6611D3a3d559992f39e3F05aC0385dCd5D);
 
     address public constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
@@ -32,7 +32,7 @@ contract ActionExecutor is FlashLoanReceiverBase {
     /// @param _loanAmount Loan amount
     /// @param _feeAmount Fee Loan amount
     /// @param _flType Type of Flash loan
-    function callActions(
+    function executeActions(
         bytes[] memory _actions,
         uint[] memory _actionIds,
         address _proxy,
@@ -93,7 +93,7 @@ contract ActionExecutor is FlashLoanReceiverBase {
 
         (actions, actionIds, proxy, _reserve, _amount)
             = abi.decode(_params, (bytes[],uint[],address,address,uint256));
-        callActions(actions, actionIds, proxy, _reserve, _amount, _fee, FlType.AAVE_LOAN);
+        executeActions(actions, actionIds, proxy, _reserve, _amount, _fee, FlType.AAVE_LOAN);
     }
 
     /// @notice  DyDx FL entry point, will be called if aave FL is taken
@@ -116,7 +116,7 @@ contract ActionExecutor is FlashLoanReceiverBase {
             TokenInterface(WETH_ADDRESS).withdraw(amount);
         }
 
-        callActions(actions, actionIds, proxy, tokenAddr, amount, 0, FlType.DYDX_LOAN);
+        executeActions(actions, actionIds, proxy, tokenAddr, amount, 0, FlType.DYDX_LOAN);
     }
 
     /// @notice Returns the FL amount for DyDx to the DsProxy

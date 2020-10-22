@@ -5,20 +5,21 @@ import "../../interfaces/ILendingPool.sol";
 import "../../auth/ProxyPermission.sol";
 import "../../interfaces/FLActionInterface.sol";
 import "../../flashloan/GeneralizedFLTaker.sol";
-import "../core/Registry.sol";
+import "../core/DFSRegistry.sol";
 import "./ActionExecutor.sol";
 import "./Subscriptions.sol";
 
 
 /// @title Handle FL taking and calls action executor
-contract ActionManagerProxy is GeneralizedFLTaker, ProxyPermission {
+contract ActionManager is GeneralizedFLTaker, ProxyPermission {
 
-    Registry public constant registry = Registry(0x2f111D6611D3a3d559992f39e3F05aC0385dCd5D);
+    address public constant DEFISAVER_LOGGER = 0x5c55B921f590a89C1Ebe84dF170E655a82b62126;
+    DFSRegistry public constant registry = DFSRegistry(0x2f111D6611D3a3d559992f39e3F05aC0385dCd5D);
 
     /// @notice Checks and takes flash loan and calls Action Executor
     /// @param _actionIds All of the actionIds for the strategy
     /// @param _actionsCallData All input data needed to execute actions
-    function manageActions(uint[] memory _actionIds, bytes[] memory _actionsCallData) public payable {
+    function manageActions(string memory _name, uint[] memory _actionIds, bytes[] memory _actionsCallData) public payable {
         (uint flAmount, address flToken, uint8 flType) = checkFl(_actionIds[0], _actionsCallData[0]);
 
         address payable actionExecutorAddr = payable(registry.getAddr(keccak256("ActionExecutor")));
@@ -31,7 +32,7 @@ contract ActionManagerProxy is GeneralizedFLTaker, ProxyPermission {
         if (flType != 0) {
             takeLoan(actionExecutorAddr, flToken, flAmount, encodedActions, LoanType(flType));
         } else {
-            ActionExecutor(actionExecutorAddr).callActions(
+            ActionExecutor(actionExecutorAddr).executeActions(
                 _actionsCallData,
                 _actionIds,
                 address(this),
@@ -43,6 +44,8 @@ contract ActionManagerProxy is GeneralizedFLTaker, ProxyPermission {
         }
 
         removePermission(actionExecutorAddr);
+
+        DefisaverLogger(DEFISAVER_LOGGER).Log(address(this), msg.sender, _name, "");
     }
 
     /// @notice Checks if the first action is a FL and gets it's data

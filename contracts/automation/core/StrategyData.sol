@@ -15,7 +15,7 @@ contract StrategyData {
     }
 
     struct Strategy {
-        address user;
+        string name;
         address proxy;
         bool active;
         uint[] triggerIds;

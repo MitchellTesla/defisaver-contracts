@@ -10,7 +10,7 @@ contract SubscriptionProxy is StrategyData {
 
     address public constant FACTORY_ADDRESS = 0x5a15566417e6C1c9546523066500bDDBc53F88C7;
 
-    function subscribe(address _executorAddr, address _subAddr, Trigger[] memory _triggers, Action[] memory _actions) public {
+    function subscribe(string memory _name, address _executorAddr, address _subAddr, Trigger[] memory _triggers, Action[] memory _actions) public {
         address currAuthority = address(DSAuth(address(this)).authority());
         DSGuard guard = DSGuard(currAuthority);
 
@@ -21,7 +21,7 @@ contract SubscriptionProxy is StrategyData {
 
         guard.permit(_executorAddr, address(this), bytes4(keccak256("execute(address,bytes)")));
 
-        Subscriptions(_subAddr).subscribe(_triggers, _actions);
+        Subscriptions(_subAddr).subscribe(_name, _triggers, _actions);
     }
 
     function update(address _subAddr, uint _subId, Trigger[] memory _triggers, Action[] memory _actions) public {

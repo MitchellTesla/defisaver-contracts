@@ -4,7 +4,7 @@ import "../../auth/AdminAuth.sol";
 import "../../loggers/DefisaverLogger.sol";
 
 /// @title Stores all the important DFS addresses and can be changed (timelock)
-contract Registry is AdminAuth {
+contract DFSRegistry is AdminAuth {
 
     DefisaverLogger public constant logger = DefisaverLogger(0x5c55B921f590a89C1Ebe84dF170E655a82b62126);
 

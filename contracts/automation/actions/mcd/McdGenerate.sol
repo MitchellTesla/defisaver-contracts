@@ -2,7 +2,7 @@ pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "../../core/Subscriptions.sol";
-import "../../core/Registry.sol";
+import "../../core/DFSRegistry.sol";
 
 import "../../../mcd/saver/McdSaverProxyHelper.sol";
 import "../../../interfaces/Manager.sol";
@@ -11,11 +11,11 @@ import "../../../interfaces/Vat.sol";
 import "../../../interfaces/DaiJoin.sol";
 import "../../../interfaces/Jug.sol";
 import "../../../DS/DSMath.sol";
-import "../../../interfaces/ActionInterface.sol";
+import "../ActionBase.sol";
 
 import "../../../utils/DebugInfo.sol";
 
-contract McdGenerate is ActionInterface, DSMath, MCDSaverProxyHelper {
+contract McdGenerate is ActionBase, DSMath, MCDSaverProxyHelper {
     address public constant MANAGER_ADDRESS = 0x5ef30b9986345249bc32d8928B7ee64DE9435E39;
     address public constant VAT_ADDRESS = 0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B;
     address public constant JUG_ADDRESS = 0x19c0976f590D67707E62397C87829d896Dc0f1F1;
@@ -49,6 +49,8 @@ contract McdGenerate is ActionInterface, DSMath, MCDSaverProxyHelper {
         }
 
         DaiJoin(DAI_JOIN_ADDRESS).exit(address(this), amount);
+
+        logger.Log(address(this), msg.sender, "McdGenerate", abi.encode(cdpId, amount));
 
         return bytes32(amount);
     }

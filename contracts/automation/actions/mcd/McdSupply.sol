@@ -5,11 +5,11 @@ import "../../../interfaces/Manager.sol";
 import "../../../interfaces/Vat.sol";
 import "../../../interfaces/Join.sol";
 import "../../../DS/DSMath.sol";
-import "../../../interfaces/ActionInterface.sol";
+import "../ActionBase.sol";
 import "../../../utils/SafeERC20.sol";
 
 
-contract McdSupply is ActionInterface, DSMath {
+contract McdSupply is ActionBase, DSMath {
     address public constant MANAGER_ADDRESS = 0x5ef30b9986345249bc32d8928B7ee64DE9435E39;
     address public constant VAT_ADDRESS = 0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B;
     address public constant ETH_JOIN_ADDRESS = 0x2F0b23f53734252Bda2277357e97e1517d6B042A;
@@ -44,6 +44,8 @@ contract McdSupply is ActionInterface, DSMath {
             convertAmount,
             0
         );
+
+        logger.Log(address(this), msg.sender, "McdSupply", abi.encode(cdpId, amount, joinAddr, from));
 
         return bytes32(convertAmount);
     }

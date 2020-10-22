@@ -2,9 +2,9 @@ pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "../../../exchange/SaverExchangeCore.sol";
-import "../../../interfaces/ActionInterface.sol";
+import "../ActionBase.sol";
 
-contract DfsSell is ActionInterface, SaverExchangeCore {
+contract DfsSell is ActionBase, SaverExchangeCore {
 
     function executeAction(uint _actionId, bytes memory _callData, bytes32[] memory _returnValues) override public payable returns (bytes32) {
         (ExchangeData memory exchangeData, address from, address to) = parseParamData(_callData, _returnValues);
@@ -14,6 +14,15 @@ contract DfsSell is ActionInterface, SaverExchangeCore {
         (, uint exchangedAmount) = _sell(exchangeData);
 
         withdrawTokens(exchangeData.destAddr, to, exchangedAmount);
+
+        logger.Log(address(this), msg.sender, "DfsSell",
+            abi.encode(
+                exchangeData.srcAddr,
+                exchangeData.destAddr,
+                exchangeData.srcAddr,
+                exchangeData.destAddr,
+                exchangedAmount
+        ));
 
         return bytes32(exchangedAmount);
     }
